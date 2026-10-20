@@ -146,7 +146,39 @@ test('listing page HTML parsing (Relay JSON)', () => {
     fuels: ['petrol', 'lpg'],
     transmission: 'manual',
     mileageKm: 201000,
+    raw: {
+      fuel: 'GASOLINE',
+      transmission: 'MANUAL',
+      odometer: 201000,
+      description: 'Auto zadbane.\nInstalacja LPG, rocznik 2016.',
+    },
   });
+});
+
+test('diagnostics: explains why a listing was rejected', () => {
+  const settings = FMF.normalizeSettings({
+    yearMin: 2005,
+    fuels: ['petrol', 'lpg'],
+    transmissions: ['manual'],
+    mileageMax: 250000,
+  });
+  const info = {
+    year: 2004,
+    fuels: ['diesel'],
+    transmission: 'automatic',
+    mileageKm: 300000,
+  };
+  const { rejected, missing } = FMF.explain(info, settings);
+  assert.deepEqual(rejected, [
+    'rok 2004 < 2005',
+    'paliwo: Diesel (wybrano: Benzyna, LPG/CNG)',
+    'skrzynia: Automat (wybrano: Manualna)',
+    'przebieg 300 tys. km > 250 tys. km',
+  ]);
+  assert.deepEqual(missing, []);
+
+  const unknown = FMF.explain({ year: null, fuels: null, transmission: null, mileageKm: null }, settings);
+  assert.deepEqual(unknown.missing, ['rok', 'paliwo', 'skrzynia', 'przebieg']);
 });
 
 test('listing page HTML parsing falls back to description text and meta tags', () => {

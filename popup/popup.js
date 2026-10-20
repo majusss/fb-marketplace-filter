@@ -41,6 +41,7 @@
     form.querySelector(`input[name="rejectMode"][value="${settings.rejectMode}"]`).checked = true;
     $('fetchDetails').checked = settings.fetchDetails;
     $('showBadges').checked = settings.showBadges;
+    $('debugLog').checked = settings.debugLog;
     updateWarnings();
   }
 
@@ -57,6 +58,7 @@
       rejectMode: checked('rejectMode')[0],
       fetchDetails: $('fetchDetails').checked,
       showBadges: $('showBadges').checked,
+      debugLog: $('debugLog').checked,
     });
   }
 
@@ -124,6 +126,23 @@
   function escapeHtml(s) {
     return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   }
+
+  $('copyLog').addEventListener('click', async () => {
+    const button = $('copyLog');
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const records = await chrome.tabs.sendMessage(tab.id, { type: 'fmf:diagnostics' });
+      if (!records || !records.length) {
+        button.textContent = 'Brak logu na tej karcie';
+      } else {
+        await navigator.clipboard.writeText(FMF.diagnosticsText(records));
+        button.textContent = `Skopiowano (${records.length})`;
+      }
+    } catch (e) {
+      button.textContent = 'Nie udało się pobrać logu';
+    }
+    setTimeout(() => (button.textContent = 'Kopiuj log diagnostyczny'), 2500);
+  });
 
   chrome.storage.sync.get('settings').then(({ settings: stored }) => {
     settings = FMF.normalizeSettings(stored);

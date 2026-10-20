@@ -108,6 +108,29 @@ Jeśli Facebook był już otwarty – odśwież kartę.
 
 ---
 
+## Diagnostyka – dlaczego ogłoszenie zostało odfiltrowane
+
+W sekcji **Diagnostyka** panelu (albo w oknie pod ikoną rozszerzenia) widać dla
+każdego sprawdzonego ogłoszenia:
+
+- **FB pokazuje** – dane, które Facebook sam zwraca dla tego auta (paliwo, skrzynia,
+  przebieg) oraz fragment opisu,
+- **Rozszerzenie** – rok, paliwo, skrzynię i przebieg wyciągnięte z tych danych,
+- **Werdykt** – `PASUJE` / `ODRZUCONE` / `BEZ DANYCH` z powodem, np.
+  *„ODRZUCONE – paliwo: Diesel (wybrano: Benzyna, LPG/CNG)”*.
+
+<div align="center">
+  <img src="docs/screenshots/diagnostics.png" alt="Log diagnostyczny: co pokazuje Facebook, co wyciągnął parser i jaki werdykt" width="420">
+  <p><em>Log diagnostyczny w panelu – widać dane z Facebooka i powód odrzucenia.</em></p>
+</div>
+
+Przycisk **Kopiuj log do schowka** (w panelu) albo **Kopiuj log diagnostyczny**
+(w oknie pod ikoną) zapisuje cały log jako tekst – można go wkleić do zgłoszenia
+na GitHubie. Opcja **Loguj do konsoli** dodaje te same wpisy do konsoli przeglądarki
+(DevTools → Console), wraz z fragmentem opisu ogłoszenia.
+
+---
+
 ## Jak to działa
 
 1. Z karty ogłoszenia czytany jest tytuł (Facebook dla aut generuje go jako

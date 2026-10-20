@@ -71,6 +71,10 @@
         <input type="checkbox" id="showBadges" />
         <span>Pokazuj etykiety na ogłoszeniach</span>
       </label>
+      <label class="check">
+        <input type="checkbox" id="debugLog" />
+        <span>Loguj diagnostykę do konsoli <small>(co pokazuje Facebook, co wyciągnął parser i jaki werdykt)</small></span>
+      </label>
     </form>
 
     <section id="stats" class="stats">Otwórz Facebook Marketplace, aby filtrować ogłoszenia.</section>
@@ -78,6 +82,9 @@
     <footer>
       <button type="button" id="reset">Resetuj filtry</button>
       <button type="button" id="clearCache">Wyczyść pamięć <span id="cacheCount"></span></button>
+    </footer>
+    <footer>
+      <button type="button" id="copyLog">Kopiuj log diagnostyczny</button>
     </footer>
 
     <script src="../src/core.js"></script>

@@ -215,6 +215,85 @@
     listing.state = state;
     for (const root of listing.cards.keys()) render(root, listing, state, info, ev);
     if (state === 'pending') ensureDetails(listing);
+    updateDiagnostic(listing, info, ev, state);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Diagnostics: what Facebook shows, what the extension made of it and why
+  // ---------------------------------------------------------------------------
+
+  const diagnostics = new Map(); // id -> record
+  const DIAGNOSTICS_MAX = 100;
+
+  function fbSummary(rec) {
+    return FMF.fbSummary(rec);
+  }
+
+  function parsedSummary(rec) {
+    return FMF.parsedSummary(rec);
+  }
+  function verdictText(rec) {
+    return FMF.verdictText(rec);
+  }
+
+  function updateDiagnostic(listing, info, ev, state) {
+    const details = listing.details;
+    const card = listing.cardInfo || {};
+    const raw = (details && details.raw) || {};
+    const explanation = FMF.explain(info, settings);
+    const rec = {
+      id: listing.id,
+      title: info.title || card.title || listing.id,
+      state,
+      verdict: ev.verdict,
+      card: {
+        year: card.year ?? null,
+        mileageKm: card.mileageKm ?? null,
+        fuels: card.fuels ?? null,
+        transmission: card.transmission ?? null,
+      },
+      fb: {
+        fuel: raw.fuel ?? null,
+        transmission: raw.transmission ?? null,
+        odometer: raw.odometer ?? null,
+        description: raw.description ?? null,
+      },
+      parsed: {
+        year: info.year ?? null,
+        fuels: info.fuels ?? null,
+        transmission: info.transmission ?? null,
+        mileageKm: info.mileageKm ?? null,
+      },
+      reasons: explanation.rejected,
+      missing: explanation.missing,
+    };
+
+    const signature = JSON.stringify([rec.state, rec.parsed, rec.fb, rec.reasons]);
+    const old = diagnostics.get(listing.id);
+    if (old && old.signature === signature) return;
+    rec.signature = signature;
+    diagnostics.set(listing.id, rec);
+    while (diagnostics.size > DIAGNOSTICS_MAX) diagnostics.delete(diagnostics.keys().next().value);
+    if (settings.debugLog) logToConsole(rec);
+  }
+
+  function logToConsole(rec) {
+    console.log(
+      `%c[Filtr aut] ${rec.title}`,
+      'font-weight:700;color:#1877f2',
+      '\n  FB pokazuje:  ' + fbSummary(rec),
+      '\n  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 160) + '…' : '(brak)'),
+      '\n  Rozszerzenie: ' + parsedSummary(rec),
+      '\n  Werdykt:      ' + verdictText(rec)
+    );
+  }
+
+  function diagnosticsList() {
+    return [...diagnostics.values()].reverse();
+  }
+
+  function diagnosticsText() {
+    return FMF.diagnosticsText(diagnosticsList());
   }
 
   function refreshAll() {
@@ -671,6 +750,8 @@
     panel = FMF.createPanel({
       save: saveSettings,
       clearCache: clearDetailsCache,
+      getDiagnostics: diagnosticsList,
+      getDiagnosticsText: diagnosticsText,
       saveCollapsed(collapsed) {
         try {
           chrome.storage.local.set({ panelCollapsed: collapsed });
@@ -817,6 +898,7 @@
 
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg && msg.type === 'fmf:stats') sendResponse(computeStats());
+    if (msg && msg.type === 'fmf:diagnostics') sendResponse(diagnosticsList());
   });
 
   Promise.all([chrome.storage.sync.get('settings'), chrome.storage.local.get('pdpQuery')])
@@ -834,4 +916,8 @@
     });
 
   setTimeout(pruneCache, 15000);
+  // Keeps the diagnostics log in the panel up to date.
+  setInterval(() => {
+    if (panel) panel.refreshLog();
+  }, 2000);
 })();

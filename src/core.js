@@ -35,6 +35,7 @@
     rejectMode: 'hide', // 'hide' | 'dim' – listings that do not match
     fetchDetails: true,
     showBadges: true,
+    debugLog: false, // write the diagnostics log to the browser console
   };
 
   const YEAR_MIN = 1930;
@@ -535,6 +536,13 @@
       fuels,
       transmission: mapFacebookTransmission(d.fbTransmission) || detectTransmission(text),
       mileageKm: odometerKm(d.odometer) || mileageFromText(d.description),
+      // What Facebook itself shows - kept for the diagnostics log.
+      raw: {
+        fuel: d.fbFuel || null,
+        transmission: d.fbTransmission || null,
+        odometer: odometerKm(d.odometer),
+        description: d.description ? String(d.description).slice(0, 400) : null,
+      },
     };
   }
 
@@ -575,6 +583,7 @@
     s.rejectMode = s.rejectMode === 'dim' ? 'dim' : 'hide';
     s.fetchDetails = s.fetchDetails !== false;
     s.showBadges = s.showBadges !== false;
+    s.debugLog = s.debugLog === true;
     return s;
   }
 
@@ -618,6 +627,92 @@
     return { verdict, failed, missing };
   }
 
+  // Human-readable reasons for a verdict: why a listing was rejected and
+  // which data could not be found. Used by the diagnostics log.
+  function explain(info, settings) {
+    const s = normalizeSettings(settings);
+    const active = activeFilters(s);
+    info = info || {};
+    const rejected = [];
+    const missing = [];
+    const wanted = s.fuels.map((f) => FUEL_LABELS[f]).join(', ');
+
+    if (active.year) {
+      if (info.year == null) missing.push('rok');
+      else {
+        if (s.yearMin != null && info.year < s.yearMin) rejected.push(`rok ${info.year} < ${s.yearMin}`);
+        if (s.yearMax != null && info.year > s.yearMax) rejected.push(`rok ${info.year} > ${s.yearMax}`);
+      }
+    }
+    if (active.fuel) {
+      if (!info.fuels || !info.fuels.length) missing.push('paliwo');
+      else if (!info.fuels.some((f) => s.fuels.includes(f))) {
+        rejected.push(`paliwo: ${info.fuels.map((f) => FUEL_LABELS[f]).join(' + ')} (wybrano: ${wanted})`);
+      }
+    }
+    if (active.transmission) {
+      if (!info.transmission) missing.push('skrzynia');
+      else if (!s.transmissions.includes(info.transmission)) {
+        rejected.push(`skrzynia: ${TRANSMISSION_LABELS[info.transmission]} (wybrano: ${s.transmissions.map((t) => TRANSMISSION_LABELS[t]).join(', ')})`);
+      }
+    }
+    if (active.mileage) {
+      if (info.mileageKm == null) missing.push('przebieg');
+      else if (info.mileageKm > s.mileageMax) rejected.push(`przebieg ${formatMileage(info.mileageKm)} > ${formatMileage(s.mileageMax)}`);
+    }
+    return { rejected, missing };
+  }
+
+  // Human-readable summary of a diagnostics record: what Facebook shows,
+  // what the extension concluded and what the verdict was.
+  const VERDICT_LABELS = {
+    match: 'PASUJE',
+    reject: 'ODRZUCONE',
+    unknown: 'BEZ DANYCH',
+    'reject-unknown': 'ODRZUCONE (brak danych)',
+    pending: 'SPRAWDZAM OPIS…',
+    off: 'FILTR WYŁĄCZONY',
+  };
+
+  function fbSummary(rec) {
+    const parts = [];
+    if (rec.fb.fuel) parts.push('paliwo ' + rec.fb.fuel);
+    if (rec.fb.transmission) parts.push('skrzynia ' + rec.fb.transmission);
+    if (rec.fb.odometer != null) parts.push('przebieg ' + formatMileage(rec.fb.odometer));
+    return parts.join(' · ') || 'brak danych w polach pojazdu';
+  }
+
+  function parsedSummary(rec) {
+    const parts = [];
+    if (rec.parsed.year != null) parts.push(String(rec.parsed.year));
+    if (rec.parsed.fuels && rec.parsed.fuels.length) parts.push(rec.parsed.fuels.map((f) => FUEL_LABELS[f]).join(' + '));
+    if (rec.parsed.transmission) parts.push(TRANSMISSION_LABELS[rec.parsed.transmission]);
+    if (rec.parsed.mileageKm != null) parts.push(formatMileage(rec.parsed.mileageKm));
+    return parts.join(' · ') || 'brak danych';
+  }
+
+  function verdictText(rec) {
+    const label = VERDICT_LABELS[rec.state] || rec.state;
+    if (rec.reasons && rec.reasons.length) return `${label} – ${rec.reasons.join('; ')}`;
+    if (rec.missing && rec.missing.length) return `${label} – brak: ${rec.missing.join(', ')}`;
+    return label;
+  }
+
+  function diagnosticsText(records) {
+    return (records || [])
+      .map(
+        (rec) =>
+          [
+            rec.title,
+            '  FB pokazuje:  ' + fbSummary(rec),
+            '  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 200) : '(brak)'),
+            '  Rozszerzenie: ' + parsedSummary(rec),
+            '  Werdykt:      ' + verdictText(rec),
+          ].join('\n')
+      )
+      .join('\n\n');
+  }
+
   function extractItemId(href) {
     const m = /\/marketplace\/item\/(\d+)/.exec(href || '');
     return m ? m[1] : null;
@@ -652,6 +747,11 @@
     normalizeSettings,
     activeFilters,
     evaluate,
+    explain,
+    fbSummary,
+    parsedSummary,
+    verdictText,
+    diagnosticsText,
     extractItemId,
     formatMileage,
     maxYear,
