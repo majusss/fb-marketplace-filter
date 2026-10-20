@@ -213,6 +213,7 @@ footer button {
   font: inherit;
   color: var(--fg);
   background: var(--bg);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -222,6 +223,7 @@ footer button:hover {
 
 #cacheCount {
   color: var(--muted);
+  font-size: 12px;
 }
 
 /* Toggle switch */
