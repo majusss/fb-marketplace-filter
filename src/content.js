@@ -281,7 +281,7 @@
     };
     if (state === 'notcar' && listing.notCar) {
       rec.reasons = [
-        (listing.notCar.type === 'wanted' ? 'ogłoszenie kupna: ' : 'części lub akcesoria: ') + `„${listing.notCar.match}"`,
+        (listing.notCar.type === 'wanted' ? 'ogłoszenie kupna: ' : 'części lub akcesoria: ') + `„${listing.notCar.match}”`,
       ];
       rec.missing = [];
       rec.verdict = 'notcar';

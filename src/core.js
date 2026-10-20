@@ -626,8 +626,25 @@
   // Wheels/tyres and body parts are safe as title markers; single part words in
   // a description may also just describe a whole car ("dorzucę komplet opon",
   // "nowe hamulce"), so the description layer only gets strict part-ad wording.
+  // Checked at the start of every title line ("Honda Accord\nKoła, Kołpaki…"),
+  // also after "Sprzedam", "Tytuł:", "Oryginalne". Not after "Nowy/Nowe" -
+  // "Nowy rozrząd, Honda Civic" is a car.
+  const PART_WORDS = [
+    'felg\\w*', 'alufelg\\w*', 'kol\\w*', 'opon\\w*', 'komplet\\b', 'stalowk\\w*', 'stalki\\b',
+    'rozrzad\\w*', 'lamp\\w*', 'swiatl\\w*', 'drzwi\\b', 'mask\\w*', 'zderzak\\w*', 'blotnik\\w*',
+    'klap\\w*', 'lusterk\\w*', 'lustro\\b', 'kierownic\\w*', 'katalizator\\w*', 'wydech\\w*',
+    'turbina\\b', 'turbosprez\\w*', 'amortyzat\\w*', 'sprezyn\\w*', 'wahacz\\w*', 'wtrysk\\w*',
+    'pomp\\w*', 'klocki\\b', 'tarcz\\w*', 'hamulc\\w*', 'hak\\w*', 'dywanik\\w*', 'pokrowc\\w*',
+    'oslon\\w*', 'podsufitk\\w*', 'alternator\\w*', 'rozrusznik\\w*', 'dwumas\\w*', 'silnik\\w*',
+    'skrzynia\\s+biegow\\b', 'czesci\\b', 'radio\\w*', 'lotk[ai]\\b', 'spojler\\w*', 'dojazdowk\\w*',
+    'plastikow\\w*', 'nakladk\\w*', 'listw\\w*', 'uszczelk\\w*', 'czujnik\\w*', 'sterownik\\w*',
+    'nawigacj\\w*', 'glosnik\\w*', 'fotel\\w*', 'szyb[ay]\\b',
+  ];
   const PARTS_TITLE_START = new RegExp(
-    '^(?:zamieszczone\\s+\\S+|\\d+\\s*x\\s*\\d+\\s*)?(?:felg\\w*|alufelg\\w*|kol\\w*|opon\\w*|komplet\\b|stal[óo]wk\\w*|stalki|rozrz[ąa]d\\w*|lamp\\w*|swiatl\\w*|drzwi\\b|mask\\w*|zderzak\\w*|blotnik\\w*|klap\\w*|lusterk\\w*|lustro|kierownic\\w*|katalizator\\w*|kolektor\\w*|wydech\\w*|turbina|turbosprez\\w*|amortyzat\\w*|sprezyn\\w*|wahacz\\w*|wtrysk\\w*|pomp\\w*|klocki\\b|tarcz\\w*|hamulc\\w*|hak\\w*|dywanik\\w*|pokrowc\\w*|oslon\\w*|podsufitk\\w*|alternator\\w*|rozrusznik\\w*|dwumasa\\w*|silnik\\w*|skrzynia\\s+biegow\\b|czesci\\b)'
+    '^(?:zamieszczone\\s+\\S+\\s+|\\d+\\s*x\\s*\\d+\\s*)?' +
+      '(?:(?:sprzedam|tytul:?|oryginaln\\w*|orginaln\\w*)\\s+){0,2}' +
+      '(?:' + PART_WORDS.join('|') + ')',
+    'm'
   );
   const PARTS_TITLE_END = new RegExp(
     '\\b(?:czesci|akcesoria|felgi|alufelgi|kola|kolo|kolach|opony|opona|lampy|lampy przednie|lamki|maska|zderzak|zderzaki|klapa|klapka|blotnik|blotniki|lusterka|lusterko|silnik|skrzynia biegow|katalizator|turbina|alternator|rozrusznik|dywaniki|hamulce|rozrzad)\\s*$'
@@ -635,15 +652,18 @@
 
   // Unambiguous phrases; single part words in a description may also describe
   // a whole car ("dorzucę komplet opon", "nowe hamulce"), so only strict
-  // "this is a parts ad" wording counts.
-  const PARTS_PHRASE = /(?:\bna\s+czesci\b|\bdo\s+czesci\b|\bczesci\s+(?:samochodow\w*|motoryzacyjne|do\s)|\bsprzedam\s+czesci\b|\bczesci\s+zapraszam\b|\bdo\s+rozbierania\b|\btylko\s+czesci\b)/i;
+  // "this is a parts ad" wording counts. "do części" / "części do" are left out
+  // on purpose - car ads say "łatwy dostęp do części", "tanie części do tego
+  // modelu" - and "na części" is skipped when negated ("nie na części").
+  const PARTS_PHRASE = /(?:(?<!\bnie\s)(?<!\bnie\s+jest\s)\bna\s+czesci\b|\bsprzedam\s+czesci\b|\bczesci\s+zapraszam\b|\bdo\s+rozbierania\b|\btylko\s+czesci\b)/i;
   const WANTED_TITLE = /^(?:kupie|zakupie|poszuku?j\w*|szukam\w*)\b/;
 
   // Returns { type: 'parts' | 'wanted', match: string } or null.
   function detectNotCar(title, text) {
     const t = normalize(title);
     if (!WANTED_TITLE.test(t)) {
-      if (PARTS_TITLE_START.test(t)) return { type: 'parts', match: t.slice(0, 30) };
+      const started = PARTS_TITLE_START.exec(t);
+      if (started) return { type: 'parts', match: started[0].trim() };
       const ended = PARTS_TITLE_END.exec(t);
       if (ended) return { type: 'parts', match: ended[0].trim() };
     }

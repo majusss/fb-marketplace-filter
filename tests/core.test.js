@@ -234,6 +234,15 @@ test('not-car: parts listings are detected', () => {
     ['Accord 6', 'Zakupię Accord 6, najlepiej na części, może być bez dokumentów', 'parts'],
     ['Lampa przednia lewa Honda Accord VIII', '', 'parts'],
     ['Silnik 1.9 TDI do Accorda', '', 'parts'],
+    // Live Facebook titles
+    ['Sprzedam Koła aluminiowe 16 Honda Civic Ufo Accord', '', 'parts'],
+    ['Sprzedam alufelgi 17 orginalne Honda 5x114,3 .J 8.', '', 'parts'],
+    ['Tytuł: Felgi aluminiowe Honda 17" 5x114.3 – Accord', '', 'parts'],
+    ['Radio Honda Accord VIII', '', 'parts'],
+    ['plastikowe przedłużenie błotnika HONDA Accord VIII', '', 'parts'],
+    ['Honda Accord\nKola, Kolpaki, Dojazdówka,\nDywaniki E', '', 'parts'],
+    ['Alufelgi Honda Civic MK8 Accord 6,5x16 Et55 5', '', 'parts'],
+    ['Honda Accord VI 1.8 Części', '', 'parts'],
   ];
   for (const [title, text, type] of cases) {
     assert.deepEqual(FMF.detectNotCar(title, text), { type, match: FMF.detectNotCar(title, text).match }, title);
@@ -256,6 +265,14 @@ test('not-car: real cars are never flagged', () => {
     ['Cześć, sprzedam Hondę Accord', 'auto zadbane, silnik 2.0 optimalne spalanie'],
     ['Kupiona w 2019, Honda CR-V', 'auto sprawne'],
     ['2005 Honda Civic', 'nowe hamulce i filtry wymienione, polecam'],
+    ['2005 Honda Civic', 'Tanie i łatwo dostępne części do tego modelu'],
+    ['2005 Honda Civic', 'Szybki dostęp do części, auto bezawaryjne'],
+    ['2005 Honda Civic', 'Auto nie jest na części, w pełni sprawne'],
+    ['2005 Honda Civic', 'Sprzedam auto, nie na części'],
+    ['Sprzedam Hondę Accord 2.0 LPG', 'auto w dobrym stanie'],
+    ['Nowy rozrząd, Honda Civic 1.8', ''],
+    ['2008 Honda Civic VIII UFO 2008r GAZ', 'Szybka sprzedaż, auto zadbane'],
+    ['2006 Honda civic 1.8benzyna 140km okazja!!!', ''],
   ];
   for (const [title, text] of cases) {
     assert.equal(FMF.detectNotCar(title, text), null, title + ' / ' + text);
