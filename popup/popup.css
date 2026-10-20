@@ -1,0 +1,270 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1c1e21;
+  --muted: #65676b;
+  --line: #dadde1;
+  --soft: #f0f2f5;
+  --accent: #1877f2;
+  --accent-fg: #ffffff;
+  --warn: #c82333;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18191a;
+    --fg: #e4e6eb;
+    --muted: #b0b3b8;
+    --line: #3e4042;
+    --soft: #242526;
+    --accent: #2d88ff;
+    --warn: #ff6b6b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  padding: 14px 16px 12px;
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+
+h1 span {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+fieldset {
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 5px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--soft);
+}
+
+input[type='number']:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chips label,
+.segmented label {
+  cursor: pointer;
+}
+
+.chips input,
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chips span {
+  display: inline-block;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.chips input:checked + span {
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.chips input:focus-visible + span,
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented label {
+  flex: 1;
+}
+
+.segmented span {
+  display: block;
+  padding: 5px 8px;
+  text-align: center;
+  background: var(--soft);
+}
+
+.segmented label + label span {
+  border-left: 1px solid var(--line);
+}
+
+.segmented input:checked + span {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0 0;
+  cursor: pointer;
+}
+
+.check input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+small,
+.hint {
+  color: var(--muted);
+}
+
+.hint {
+  margin: -4px 0 10px;
+  font-size: 12px;
+}
+
+.warn {
+  margin: 4px 0 0;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.stats {
+  margin: 12px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.stats b {
+  color: var(--fg);
+}
+
+footer {
+  display: flex;
+  gap: 8px;
+}
+
+footer button {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+footer button:hover {
+  background: var(--soft);
+}
+
+#cacheCount {
+  color: var(--muted);
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+
+.switch input:checked + span {
+  background: var(--accent);
+}
+
+.switch input:checked + span::after {
+  transform: translateX(16px);
+}
+
+.switch input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+form.disabled {
+  opacity: 0.5;
+}

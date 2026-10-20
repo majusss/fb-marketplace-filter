@@ -1,0 +1,13 @@
+{
+  "name": "fb-marketplace-filter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rozszerzenie przeglądarki filtrujące ogłoszenia samochodów na Facebook Marketplace po roku, paliwie, skrzyni biegów i przebiegu.",
+  "scripts": {
+    "test": "node --test tests/core.test.js",
+    "test:e2e": "node --test tests/e2e.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

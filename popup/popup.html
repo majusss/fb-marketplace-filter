@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <title>Filtr aut</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="../icons/icon48.png" alt="" width="28" height="28" />
+      <h1>Filtr aut <span>Marketplace</span></h1>
+      <label class="switch" title="Włącz / wyłącz filtrowanie">
+        <input type="checkbox" id="enabled" />
+        <span></span>
+      </label>
+    </header>
+
+    <form id="form" autocomplete="off">
+      <fieldset>
+        <legend>Rok produkcji</legend>
+        <div class="range">
+          <input type="number" id="yearMin" placeholder="od" min="1930" inputmode="numeric" />
+          <span>–</span>
+          <input type="number" id="yearMax" placeholder="do" min="1930" inputmode="numeric" />
+        </div>
+        <p class="warn" id="yearWarn" hidden>„Od” jest większe niż „do”.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Paliwo</legend>
+        <div class="chips" id="fuels"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Skrzynia biegów</legend>
+        <div class="chips" id="transmissions"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Przebieg</legend>
+        <div class="range">
+          <span>do</span>
+          <input type="number" id="mileageMax" placeholder="dowolny" min="0" step="10000" inputmode="numeric" />
+          <span>km</span>
+        </div>
+      </fieldset>
+
+      <p class="hint">Niezaznaczone paliwo / skrzynia = dowolne.</p>
+
+      <fieldset>
+        <legend>Ogłoszenia bez tych danych</legend>
+        <div class="segmented">
+          <label><input type="radio" name="unknownMode" value="show" /><span>Pokazuj z „?”</span></label>
+          <label><input type="radio" name="unknownMode" value="hide" /><span>Ukrywaj</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Niepasujące ogłoszenia</legend>
+        <div class="segmented">
+          <label><input type="radio" name="rejectMode" value="hide" /><span>Ukrywaj</span></label>
+          <label><input type="radio" name="rejectMode" value="dim" /><span>Przyciemniaj</span></label>
+        </div>
+      </fieldset>
+
+      <label class="check">
+        <input type="checkbox" id="fetchDetails" />
+        <span>Sprawdzaj opisy ogłoszeń <small>(potrzebne do paliwa i skrzyni – na liście ich nie widać)</small></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="showBadges" />
+        <span>Pokazuj etykiety na ogłoszeniach</span>
+      </label>
+    </form>
+
+    <section id="stats" class="stats">Otwórz Facebook Marketplace, aby filtrować ogłoszenia.</section>
+
+    <footer>
+      <button type="button" id="reset">Resetuj filtry</button>
+      <button type="button" id="clearCache">Wyczyść pamięć <span id="cacheCount"></span></button>
+    </footer>
+
+    <script src="../src/core.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
