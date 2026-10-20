@@ -638,14 +638,21 @@
     'oslon\\w*', 'podsufitk\\w*', 'alternator\\w*', 'rozrusznik\\w*', 'dwumas\\w*', 'silnik\\w*',
     'skrzynia\\s+biegow\\b', 'czesci\\b', 'radio\\w*', 'lotk[ai]\\b', 'spojler\\w*', 'dojazdowk\\w*',
     'plastikow\\w*', 'nakladk\\w*', 'listw\\w*', 'uszczelk\\w*', 'czujnik\\w*', 'sterownik\\w*',
-    'nawigacj\\w*', 'glosnik\\w*', 'fotel\\w*', 'szyb[ay]\\b',
+    'nawigacj\\w*', 'glosnik\\w*', 'fotel\\w*', 'szyb[ay]\\b', 'akumulator\\w*', 'zawieszeni\\w*',
+    'gwintow\\w*', 'chlodnic\\w*', 'intercooler\\w*', 'sprzeglo\\w*', 'bagaznik\\w*', 'belk\\w*',
   ];
+  // Prefixes allowed before the part word: "Sprzedam", "Tytuł:", adjectives
+  // ("Piękne koła", "Oryginalne radio", also misspelled) and "Honda – felgi".
   const PARTS_TITLE_START = new RegExp(
     '^(?:zamieszczone\\s+\\S+\\s+|\\d+\\s*x\\s*\\d+\\s*)?' +
-      '(?:(?:sprzedam|tytul:?|oryginaln\\w*|orginaln\\w*)\\s+){0,2}' +
+      '(?:\\S+\\s*[-–—:]\\s+)?' +
+      '(?:(?:sprzedam|tytul:?|orygina\\w*|orginal\\w*|piekn\\w*|ladn\\w*|super|zimow\\w*|letni\\w*|wielosezonow\\w*|uzywan\\w*|aluminiow\\w*|stalow\\w*)\\s+){0,2}' +
       '(?:' + PART_WORDS.join('|') + ')',
     'm'
   );
+  // Anywhere in the title: tyre size (215/50/17, 225/45 R17), bolt pattern
+  // (5x114.3) or a piece count ("4 szt.") - car titles never have these.
+  const PARTS_TITLE_ANY = /\b\d{3}\/\d{2}\s*(?:\/|\s)\s*r?\s?\d{2}\b|\b[45]\s*x\s*1[01]\d\b|\b\d+\s*szt\b/;
   const PARTS_TITLE_END = new RegExp(
     '\\b(?:czesci|akcesoria|felgi|alufelgi|kola|kolo|kolach|opony|opona|lampy|lampy przednie|lamki|maska|zderzak|zderzaki|klapa|klapka|blotnik|blotniki|lusterka|lusterko|silnik|skrzynia biegow|katalizator|turbina|alternator|rozrusznik|dywaniki|hamulce|rozrzad)\\s*$'
   );
@@ -666,6 +673,8 @@
       if (started) return { type: 'parts', match: started[0].trim() };
       const ended = PARTS_TITLE_END.exec(t);
       if (ended) return { type: 'parts', match: ended[0].trim() };
+      const any = PARTS_TITLE_ANY.exec(t);
+      if (any) return { type: 'parts', match: any[0].trim() };
     }
     const m = PARTS_PHRASE.exec(normalize(text));
     if (m) return { type: 'parts', match: m[0].trim() };

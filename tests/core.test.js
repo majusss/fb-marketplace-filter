@@ -243,6 +243,13 @@ test('not-car: parts listings are detected', () => {
     ['Honda Accord\nKola, Kolpaki, Dojazdówka,\nDywaniki E', '', 'parts'],
     ['Alufelgi Honda Civic MK8 Accord 6,5x16 Et55 5', '', 'parts'],
     ['Honda Accord VI 1.8 Części', '', 'parts'],
+    ['Oryginale radio Honda accord VII', '', 'parts'],
+    ['Piękne koła zimowe do Honda Accord Civic KORMORAN 215/50/17', '', 'parts'],
+    ['Honda – felgi aluminiowe 17 cali z oponami, komplet 4 szt.', '', 'parts'],
+    ['Opony Honda 225/45 R17', '', 'parts'],
+    ['Honda Accord 4 szt. kołpaki', '', 'parts'],
+    ['Akumulator 750a 75ah', '', 'parts'],
+    ['Zawieszenie gwintowane KW Honda accord vii sedan', '', 'parts'],
   ];
   for (const [title, text, type] of cases) {
     assert.deepEqual(FMF.detectNotCar(title, text), { type, match: FMF.detectNotCar(title, text).match }, title);
@@ -273,6 +280,11 @@ test('not-car: real cars are never flagged', () => {
     ['Nowy rozrząd, Honda Civic 1.8', ''],
     ['2008 Honda Civic VIII UFO 2008r GAZ', 'Szybka sprzedaż, auto zadbane'],
     ['2006 Honda civic 1.8benzyna 140km okazja!!!', ''],
+    ['Piękna Honda Accord 2.0 LPG', ''],
+    ['Honda – Accord VII 2.4 Type-S', ''],
+    ['Super Honda Civic 1.8 2008', ''],
+    ['Honda Accord 2.2 i-CTDi 140 KM 2008', ''],
+    ['Honda CR-V 2.0 4x4 2007', ''],
   ];
   for (const [title, text] of cases) {
     assert.equal(FMF.detectNotCar(title, text), null, title + ' / ' + text);
