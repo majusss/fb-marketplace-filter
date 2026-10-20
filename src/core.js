@@ -803,25 +803,25 @@
     if (active.year) {
       if (info.year == null) missing.push('rok');
       else {
-        if (s.yearMin != null && info.year < s.yearMin) rejected.push(`rok ${info.year} < ${s.yearMin}`);
-        if (s.yearMax != null && info.year > s.yearMax) rejected.push(`rok ${info.year} > ${s.yearMax}`);
+        if (s.yearMin != null && info.year < s.yearMin) rejected.push(`rok ${info.year} (od ${s.yearMin})`);
+        if (s.yearMax != null && info.year > s.yearMax) rejected.push(`rok ${info.year} (do ${s.yearMax})`);
       }
     }
     if (active.fuel) {
       if (!info.fuels || !info.fuels.length) missing.push('paliwo');
       else if (!info.fuels.some((f) => s.fuels.includes(f))) {
-        rejected.push(`paliwo: ${info.fuels.map((f) => FUEL_LABELS[f]).join(' + ')} (wybrano: ${wanted})`);
+        rejected.push(`paliwo: ${info.fuels.map((f) => FUEL_LABELS[f]).join(' + ')} (wybrane: ${wanted})`);
       }
     }
     if (active.transmission) {
       if (!info.transmission) missing.push('skrzynia');
       else if (!s.transmissions.includes(info.transmission)) {
-        rejected.push(`skrzynia: ${TRANSMISSION_LABELS[info.transmission]} (wybrano: ${s.transmissions.map((t) => TRANSMISSION_LABELS[t]).join(', ')})`);
+        rejected.push(`skrzynia: ${TRANSMISSION_LABELS[info.transmission]} (wybrane: ${s.transmissions.map((t) => TRANSMISSION_LABELS[t]).join(', ')})`);
       }
     }
     if (active.mileage) {
       if (info.mileageKm == null) missing.push('przebieg');
-      else if (info.mileageKm > s.mileageMax) rejected.push(`przebieg ${formatMileage(info.mileageKm)} > ${formatMileage(s.mileageMax)}`);
+      else if (info.mileageKm > s.mileageMax) rejected.push(`przebieg ${formatMileage(info.mileageKm)} (limit ${formatMileage(s.mileageMax)})`);
     }
     return { rejected, missing };
   }
@@ -830,11 +830,11 @@
   // what the extension concluded and what the verdict was.
   const VERDICT_LABELS = {
     match: 'PASUJE',
-    reject: 'ODRZUCONE',
-    unknown: 'BEZ DANYCH',
-    'reject-unknown': 'ODRZUCONE (brak danych)',
-    notcar: 'TO NIE JEST AUTO',
-    pending: 'SPRAWDZAM OPIS…',
+    reject: 'NIE PASUJE',
+    unknown: 'BRAK DANYCH',
+    'reject-unknown': 'UKRYTE – BRAK DANYCH',
+    notcar: 'NIE SAMOCHÓD',
+    pending: 'SPRAWDZANIE OPISU…',
     off: 'FILTR WYŁĄCZONY',
   };
 
@@ -843,7 +843,7 @@
     if (rec.fb.fuel) parts.push('paliwo ' + rec.fb.fuel);
     if (rec.fb.transmission) parts.push('skrzynia ' + rec.fb.transmission);
     if (rec.fb.odometer != null) parts.push('przebieg ' + formatMileage(rec.fb.odometer));
-    return parts.join(' · ') || 'brak danych w polach pojazdu';
+    return parts.join(' · ') || 'pola pojazdu niewypełnione';
   }
 
   function parsedSummary(rec) {
@@ -852,13 +852,13 @@
     if (rec.parsed.fuels && rec.parsed.fuels.length) parts.push(rec.parsed.fuels.map((f) => FUEL_LABELS[f]).join(' + '));
     if (rec.parsed.transmission) parts.push(TRANSMISSION_LABELS[rec.parsed.transmission]);
     if (rec.parsed.mileageKm != null) parts.push(formatMileage(rec.parsed.mileageKm));
-    return parts.join(' · ') || 'brak danych';
+    return parts.join(' · ') || 'nic nie odczytano';
   }
 
   function verdictText(rec) {
     const label = VERDICT_LABELS[rec.state] || rec.state;
     if (rec.reasons && rec.reasons.length) return `${label} – ${rec.reasons.join('; ')}`;
-    if (rec.missing && rec.missing.length) return `${label} – brak: ${rec.missing.join(', ')}`;
+    if (rec.missing && rec.missing.length) return `${label} – nie podano: ${rec.missing.join(', ')}`;
     return label;
   }
 
@@ -868,11 +868,11 @@
         (rec) =>
           [
             rec.title,
-            '  FB pokazuje:  ' + fbSummary(rec),
-            '  Karta:        ' + (rec.card.text ? rec.card.text : '(brak)'),
-            '  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ') : '(brak)'),
-            '  Rozszerzenie: ' + parsedSummary(rec),
-            '  Werdykt:      ' + verdictText(rec),
+            '  Facebook:   ' + fbSummary(rec),
+            '  Na liście:  ' + (rec.card.text ? rec.card.text : '–'),
+            '  Opis:       ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ') : '–'),
+            '  Odczytano:  ' + parsedSummary(rec),
+            '  Werdykt:    ' + verdictText(rec),
           ].join('\n')
       )
       .join('\n\n');

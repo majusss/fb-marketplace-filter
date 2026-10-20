@@ -209,7 +209,7 @@ test('extension filters fake Marketplace listings', { timeout: 120000 }, async (
   assert.ok(!cardText.includes('Automat'), cardText);
 
   // The pill repaints on the next animation frame.
-  await page.waitForFunction(() => /4 pasuje · 3 ukrytych · 1 bez danych/.test(document.getElementById('fmf-pill').textContent));
+  await page.waitForFunction(() => /Pasuje: 4 · Odfiltrowane: 3 · Bez danych: 1/.test(document.getElementById('fmf-pill').textContent));
   if (SHOTS_DIR) await page.screenshot({ path: path.join(SHOTS_DIR, 'results.png') });
 
   // --- Infinite scroll ----------------------------------------------------------
@@ -263,7 +263,7 @@ test('extension filters fake Marketplace listings', { timeout: 120000 }, async (
     { yearMin: fromPanel.settings.yearMin, transmissions: fromPanel.settings.transmissions },
     { yearMin: 2016, transmissions: [] }
   );
-  assert.match(await page.locator('#fmf-panel .stats').innerText(), /pasuje/);
+  assert.match(await page.locator('#fmf-panel .stats').innerText(), /Pasuje/);
   if (SHOTS_DIR) await page.screenshot({ path: path.join(SHOTS_DIR, 'panel.png') });
 
   // --- Own listings / item pages are left alone ------------------------------

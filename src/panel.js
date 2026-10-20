@@ -88,8 +88,8 @@
         <button type="button" class="toggle-open" aria-expanded="true">
           <h2>Filtr aut</h2><span class="chev" aria-hidden="true">▾</span>
         </button>
-        <button type="button" class="switch" role="switch" aria-checked="true" title="Włącz / wyłącz filtrowanie"></button>
-        <button type="button" class="close" title="Zamknij">✕</button>
+        <button type="button" class="switch" role="switch" aria-checked="true" title="Włącz lub wyłącz filtr" aria-label="Włącz lub wyłącz filtr"></button>
+        <button type="button" class="close" title="Zamknij panel" aria-label="Zamknij panel">✕</button>
       </header>
       <p class="stats"></p>
       <div class="body">
@@ -97,17 +97,17 @@
           <div class="label">Rok produkcji</div>
           <div class="row"><input type="number" name="yearMin" min="1930" inputmode="numeric" placeholder="od"><span>–</span>
             <input type="number" name="yearMax" min="1930" inputmode="numeric" placeholder="do"></div>
-          <p class="warn" data-warn="year" hidden>„Od” jest większe niż „do”.</p>
+          <p class="warn" data-warn="year" hidden>Rok „od” jest późniejszy niż „do” – żadne ogłoszenie nie spełni tego warunku.</p>
         </div>
         <div class="field"><div class="label">Paliwo</div><div class="chips" data-chips="fuels"></div></div>
         <div class="field"><div class="label">Skrzynia biegów</div><div class="chips" data-chips="transmissions"></div></div>
         <div class="field">
           <div class="label">Przebieg</div>
-          <div class="row"><span>do</span><input type="number" name="mileageMax" min="0" step="10000" inputmode="numeric" placeholder="dowolny"><span>km</span></div>
-          <p class="hint">Niezaznaczone paliwo / skrzynia = dowolne.</p>
+          <div class="row"><span>do</span><input type="number" name="mileageMax" min="0" step="10000" inputmode="numeric" placeholder="bez limitu"><span>km</span></div>
+          <p class="hint">Jeśli nie zaznaczysz paliwa ani skrzyni, pasuje każde.</p>
         </div>
         <div class="field">
-          <div class="label">Ogłoszenia bez tych danych</div>
+          <div class="label">Gdy w ogłoszeniu brakuje danych</div>
           <div class="seg" data-seg="unknownMode"><button type="button" value="show">Pokazuj z „?”</button><button type="button" value="hide">Ukrywaj</button></div>
         </div>
         <div class="field">
@@ -115,21 +115,22 @@
           <div class="seg" data-seg="rejectMode"><button type="button" value="hide">Ukrywaj</button><button type="button" value="dim">Przyciemniaj</button></div>
         </div>
         <label class="check"><input type="checkbox" name="fetchDetails"><span>Sprawdzaj opisy ogłoszeń
-          <small>Paliwa i skrzyni zwykle nie widać na liście.</small></span></label>
+          <small>Paliwo i skrzynia rzadko są widoczne na liście wyników.</small></span></label>
         <label class="check"><input type="checkbox" name="partsHide"><span>Ukrywaj części i akcesoria
-          <small>Felgi, koła, rozrząd, ogłoszenia typu „kupię”.</small></span></label>
-        <label class="check"><input type="checkbox" name="showBadges"><span>Pokazuj etykiety na ogłoszeniach</span></label>
+          <small>Felgi, opony, części zamienne i ogłoszenia „kupię”.</small></span></label>
+        <label class="check"><input type="checkbox" name="showBadges"><span>Pokazuj etykiety na ogłoszeniach
+          <small>Rok, paliwo i skrzynia bezpośrednio na zdjęciu.</small></span></label>
         <div class="field">
           <div class="label">Diagnostyka</div>
-          <label class="check"><input type="checkbox" name="debugLog"><span>Loguj do konsoli
-            <small>Co pokazuje Facebook, co wyciągnął parser i jaki wyszedł werdykt.</small></span></label>
-          <button type="button" class="wide" data-action="toggleLog">Pokaż log ogłoszeń (<span data-log-count>0</span>)</button>
+          <label class="check"><input type="checkbox" name="debugLog"><span>Zapisuj diagnostykę w konsoli
+            <small>Przydatne przy zgłaszaniu błędów (DevTools → Console).</small></span></label>
+          <button type="button" class="wide" data-action="toggleLog">Sprawdzone ogłoszenia (<span data-log-count>0</span>)</button>
           <div class="log" data-log hidden></div>
-          <button type="button" class="wide" data-action="copyLog">Kopiuj log do schowka</button>
+          <button type="button" class="wide" data-action="copyLog">Kopiuj raport diagnostyczny</button>
         </div>
         <footer class="always">
-          <button type="button" data-action="reset">Resetuj filtry</button>
-          <button type="button" data-action="clearCache">Wyczyść pamięć</button>
+          <button type="button" data-action="reset">Wyczyść filtry</button>
+          <button type="button" data-action="clearCache" title="Usuwa zapamiętane wyniki sprawdzania ogłoszeń (przechowywane 7 dni)">Wyczyść pamięć</button>
         </footer>
       </div>
     </div>`;
@@ -260,7 +261,7 @@
       $('[data-log-count]').textContent = String(records.length);
       if (!logOpen) return;
       if (!records.length) {
-        logBox.textContent = 'Brak sprawdzonych ogłoszeń.';
+        logBox.textContent = 'Nie sprawdzono jeszcze żadnego ogłoszenia.';
         return;
       }
       logBox.replaceChildren(
@@ -270,15 +271,15 @@
           title.textContent = rec.title;
           const fb = document.createElement('span');
           fb.className = 'muted';
-          fb.textContent = 'FB: ' + FMF.fbSummary(rec);
+          fb.textContent = 'Facebook: ' + FMF.fbSummary(rec);
           const card = document.createElement('span');
           card.className = 'muted';
-          card.textContent = 'Karta: ' + (rec.card.text || '(brak)');
+          card.textContent = 'Na liście: ' + (rec.card.text || '–');
           const parsed = document.createElement('span');
           parsed.className = 'muted';
-          parsed.textContent = 'Rozszerzenie: ' + FMF.parsedSummary(rec);
+          parsed.textContent = 'Odczytano: ' + FMF.parsedSummary(rec);
           const verdict = document.createElement('span');
-          verdict.className = 'v-' + (rec.state === 'match' ? 'match' : rec.state === 'reject' || rec.state === 'reject-unknown' ? 'reject' : 'unknown');
+          verdict.className = 'v-' + (rec.state === 'match' ? 'match' : rec.state === 'reject' || rec.state === 'reject-unknown' || rec.state === 'notcar' ? 'reject' : 'unknown');
           verdict.textContent = FMF.verdictText(rec);
           box.append(title, fb, card, parsed, verdict);
           return box;
@@ -291,11 +292,11 @@
       const button = $('[data-action=copyLog]');
       try {
         await navigator.clipboard.writeText(text);
-        button.textContent = 'Skopiowano ✓';
+        button.textContent = 'Skopiowano do schowka';
       } catch (e) {
         button.textContent = 'Nie udało się skopiować';
       }
-      setTimeout(() => (button.textContent = 'Kopiuj log do schowka'), 2000);
+      setTimeout(() => (button.textContent = 'Kopiuj raport diagnostyczny'), 2000);
     }
 
     function setCollapsed(collapsed, save) {
@@ -307,12 +308,12 @@
     function setStats(s) {
       const box = $('.stats');
       let html;
-      if (!s.enabled) html = 'Filtr wyłączony.';
-      else if (!s.hasFilters) html = 'Ustaw filtry poniżej.';
+      if (!s.enabled) html = 'Filtr jest wyłączony.';
+      else if (!s.hasFilters) html = 'Ustaw kryteria poniżej, aby zacząć filtrować.';
       else {
-        const parts = [`<b>${s.shown}</b> pasuje`, `<b>${s.hidden}</b> odfiltrowanych`];
-        if (s.pending) parts.push(`<b>${s.pending}</b> sprawdzam`);
-        if (s.unknown) parts.push(`<b>${s.unknown}</b> bez danych`);
+        const parts = [`Pasuje: <b>${s.shown}</b>`, `Odfiltrowane: <b>${s.hidden}</b>`];
+        if (s.pending) parts.push(`Sprawdzane: <b>${s.pending}</b>`);
+        if (s.unknown) parts.push(`Bez danych: <b>${s.unknown}</b>`);
         html = parts.join(' · ');
       }
       if (s.note) html += '<br>' + escapeHtml(s.note);

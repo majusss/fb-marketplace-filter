@@ -9,8 +9,8 @@
     <header>
       <img src="../icons/icon48.png" alt="" width="28" height="28" />
       <h1>Filtr aut <span>Marketplace</span></h1>
-      <label class="switch" title="Włącz / wyłącz filtrowanie">
-        <input type="checkbox" id="enabled" />
+      <label class="switch" title="Włącz lub wyłącz filtr">
+        <input type="checkbox" id="enabled" aria-label="Włącz lub wyłącz filtr" />
         <span></span>
       </label>
     </header>
@@ -23,7 +23,7 @@
           <span>–</span>
           <input type="number" id="yearMax" placeholder="do" min="1930" inputmode="numeric" />
         </div>
-        <p class="warn" id="yearWarn" hidden>„Od” jest większe niż „do”.</p>
+        <p class="warn" id="yearWarn" hidden>Rok „od” jest późniejszy niż „do” – żadne ogłoszenie nie spełni tego warunku.</p>
       </fieldset>
 
       <fieldset>
@@ -40,15 +40,15 @@
         <legend>Przebieg</legend>
         <div class="range">
           <span>do</span>
-          <input type="number" id="mileageMax" placeholder="dowolny" min="0" step="10000" inputmode="numeric" />
+          <input type="number" id="mileageMax" placeholder="bez limitu" min="0" step="10000" inputmode="numeric" />
           <span>km</span>
         </div>
       </fieldset>
 
-      <p class="hint">Niezaznaczone paliwo / skrzynia = dowolne.</p>
+      <p class="hint">Jeśli nie zaznaczysz paliwa ani skrzyni, pasuje każde.</p>
 
       <fieldset>
-        <legend>Ogłoszenia bez tych danych</legend>
+        <legend>Gdy w ogłoszeniu brakuje danych</legend>
         <div class="segmented">
           <label><input type="radio" name="unknownMode" value="show" /><span>Pokazuj z „?”</span></label>
           <label><input type="radio" name="unknownMode" value="hide" /><span>Ukrywaj</span></label>
@@ -65,30 +65,30 @@
 
       <label class="check">
         <input type="checkbox" id="fetchDetails" />
-        <span>Sprawdzaj opisy ogłoszeń <small>(potrzebne do paliwa i skrzyni – na liście ich nie widać)</small></span>
+        <span>Sprawdzaj opisy ogłoszeń <small>Paliwo i skrzynia rzadko są widoczne na liście wyników.</small></span>
       </label>
       <label class="check">
         <input type="checkbox" id="partsHide" />
-        <span>Ukrywaj części i akcesoria <small>(felgi, koła, rozrząd, ogłoszenia typu „kupię”)</small></span>
+        <span>Ukrywaj części i akcesoria <small>Felgi, opony, części zamienne i ogłoszenia „kupię”.</small></span>
       </label>
       <label class="check">
         <input type="checkbox" id="showBadges" />
-        <span>Pokazuj etykiety na ogłoszeniach</span>
+        <span>Pokazuj etykiety na ogłoszeniach <small>Rok, paliwo i skrzynia bezpośrednio na zdjęciu.</small></span>
       </label>
       <label class="check">
         <input type="checkbox" id="debugLog" />
-        <span>Loguj diagnostykę do konsoli <small>(co pokazuje Facebook, co wyciągnął parser i jaki werdykt)</small></span>
+        <span>Zapisuj diagnostykę w konsoli <small>Przydatne przy zgłaszaniu błędów (DevTools → Console).</small></span>
       </label>
     </form>
 
-    <section id="stats" class="stats">Otwórz Facebook Marketplace, aby filtrować ogłoszenia.</section>
+    <section id="stats" class="stats">Otwórz Facebook Marketplace, aby zacząć filtrować.</section>
 
     <footer>
-      <button type="button" id="reset">Resetuj filtry</button>
-      <button type="button" id="clearCache">Wyczyść pamięć <span id="cacheCount"></span></button>
+      <button type="button" id="reset">Wyczyść filtry</button>
+      <button type="button" id="clearCache" title="Usuwa zapamiętane wyniki sprawdzania ogłoszeń (przechowywane 7 dni)">Wyczyść pamięć <span id="cacheCount"></span></button>
     </footer>
     <footer>
-      <button type="button" id="copyLog">Kopiuj log diagnostyczny</button>
+      <button type="button" id="copyLog">Kopiuj raport diagnostyczny</button>
     </footer>
 
     <script src="../src/core.js"></script>

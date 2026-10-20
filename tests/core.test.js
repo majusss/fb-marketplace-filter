@@ -345,10 +345,10 @@ test('diagnostics: explains why a listing was rejected', () => {  const settings
   };
   const { rejected, missing } = FMF.explain(info, settings);
   assert.deepEqual(rejected, [
-    'rok 2004 < 2005',
-    'paliwo: Diesel (wybrano: Benzyna, LPG/CNG)',
-    'skrzynia: Automat (wybrano: Manualna)',
-    'przebieg 300 tys. km > 250 tys. km',
+    'rok 2004 (od 2005)',
+    'paliwo: Diesel (wybrane: Benzyna, LPG/CNG)',
+    'skrzynia: Automat (wybrane: Manualna)',
+    'przebieg 300 tys. km (limit 250 tys. km)',
   ]);
   assert.deepEqual(missing, []);
 

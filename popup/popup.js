@@ -113,15 +113,15 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const s = await chrome.tabs.sendMessage(tab.id, { type: 'fmf:stats' });
       if (!s || !s.active) {
-        box.textContent = 'Otwórz wyniki wyszukiwania na Facebook Marketplace, aby filtrować ogłoszenia.';
+        box.textContent = 'Otwórz wyniki wyszukiwania samochodów na Facebook Marketplace.';
         return;
       }
-      const parts = [`<b>${s.shown}</b> pasuje`, `<b>${s.hidden}</b> odfiltrowanych`];
-      if (s.pending) parts.push(`<b>${s.pending}</b> sprawdzam`);
-      if (s.unknown) parts.push(`<b>${s.unknown}</b> bez danych`);
-      box.innerHTML = 'Na tej stronie: ' + parts.join(' · ') + (s.note ? `<br>${escapeHtml(s.note)}` : '');
+      const parts = [`Pasuje: <b>${s.shown}</b>`, `Odfiltrowane: <b>${s.hidden}</b>`];
+      if (s.pending) parts.push(`Sprawdzane: <b>${s.pending}</b>`);
+      if (s.unknown) parts.push(`Bez danych: <b>${s.unknown}</b>`);
+      box.innerHTML = parts.join(' · ') + (s.note ? `<br>${escapeHtml(s.note)}` : '');
     } catch (e) {
-      box.textContent = 'Otwórz Facebook Marketplace (lub odśwież kartę), aby filtrować ogłoszenia.';
+      box.textContent = 'Otwórz Facebook Marketplace lub odśwież kartę, aby zacząć filtrować.';
     }
   }
 
@@ -135,15 +135,15 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const records = await chrome.tabs.sendMessage(tab.id, { type: 'fmf:diagnostics' });
       if (!records || !records.length) {
-        button.textContent = 'Brak logu na tej karcie';
+        button.textContent = 'Brak sprawdzonych ogłoszeń na tej karcie';
       } else {
         await navigator.clipboard.writeText(FMF.diagnosticsText(records));
-        button.textContent = `Skopiowano (${records.length})`;
+        button.textContent = `Skopiowano raport (ogłoszenia: ${records.length})`;
       }
     } catch (e) {
-      button.textContent = 'Nie udało się pobrać logu';
+      button.textContent = 'Nie udało się pobrać raportu';
     }
-    setTimeout(() => (button.textContent = 'Kopiuj log diagnostyczny'), 2500);
+    setTimeout(() => (button.textContent = 'Kopiuj raport diagnostyczny'), 2500);
   });
 
   chrome.storage.sync.get('settings').then(({ settings: stored }) => {

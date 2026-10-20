@@ -171,6 +171,12 @@ small,
   color: var(--muted);
 }
 
+.check small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+}
+
 .hint {
   margin: -4px 0 10px;
   font-size: 12px;

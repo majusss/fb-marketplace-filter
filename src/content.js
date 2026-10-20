@@ -282,7 +282,7 @@
     };
     if (state === 'notcar' && listing.notCar) {
       rec.reasons = [
-        (listing.notCar.type === 'wanted' ? 'ogłoszenie kupna: ' : 'części lub akcesoria: ') + `„${listing.notCar.match}”`,
+        (listing.notCar.type === 'wanted' ? 'ogłoszenie kupna' : 'część lub akcesorium') + ` – rozpoznano „${listing.notCar.match}”`,
       ];
       rec.missing = [];
       rec.verdict = 'notcar';
@@ -337,7 +337,7 @@
 
     if (visual) root.dataset.fmfState = visual;
     else delete root.dataset.fmfState;
-    renderBadges(root, state, info, ev);
+    renderBadges(root, listing, state, info, ev);
   }
 
   function chipKind(field, ev, active) {
@@ -345,7 +345,7 @@
     return active[field] ? 'good' : 'info';
   }
 
-  function renderBadges(root, state, info, ev) {
+  function renderBadges(root, listing, state, info, ev) {
     let box = root.querySelector('.fmf-badges');
     if (!settings.showBadges || state === 'off') {
       if (box) box.remove();
@@ -355,14 +355,19 @@
 
     const active = FMF.activeFilters(settings);
     const chips = [];
-    if (info.year) chips.push([String(info.year), chipKind('year', ev, active)]);
-    if (info.fuels && info.fuels.length) {
-      chips.push([info.fuels.map((f) => FMF.FUEL_LABELS[f]).join(' + '), chipKind('fuel', ev, active)]);
+    if (state === 'notcar') {
+      // Seen only in dim mode: say why instead of listing missing car data.
+      chips.push([listing.notCar && listing.notCar.type === 'wanted' ? 'ogłoszenie kupna' : 'część / akcesorium', 'bad']);
+    } else {
+      if (info.year) chips.push([String(info.year), chipKind('year', ev, active)]);
+      if (info.fuels && info.fuels.length) {
+        chips.push([info.fuels.map((f) => FMF.FUEL_LABELS[f]).join(' + '), chipKind('fuel', ev, active)]);
+      }
+      if (info.transmission) chips.push([FMF.TRANSMISSION_LABELS[info.transmission], chipKind('transmission', ev, active)]);
+      if (info.mileageKm != null && ev.failed.includes('mileage')) chips.push([FMF.formatMileage(info.mileageKm), 'bad']);
+      if (state === 'pending') chips.push(['sprawdzanie opisu…', 'pending']);
+      else if (ev.verdict !== 'reject') for (const field of ev.missing) chips.push([MISSING_LABELS[field], 'unknown']);
     }
-    if (info.transmission) chips.push([FMF.TRANSMISSION_LABELS[info.transmission], chipKind('transmission', ev, active)]);
-    if (info.mileageKm != null && ev.failed.includes('mileage')) chips.push([FMF.formatMileage(info.mileageKm), 'bad']);
-    if (state === 'pending') chips.push(['sprawdzam opis…', 'pending']);
-    else if (ev.verdict !== 'reject') for (const field of ev.missing) chips.push([MISSING_LABELS[field], 'unknown']);
 
     const signature = JSON.stringify(chips);
     const host = badgeHost(root);
@@ -487,7 +492,7 @@
 
   function pauseFetching() {
     pausedUntil = Date.now() + BLOCK_PAUSE_MS;
-    statusNote = 'Facebook ogranicza zapytania – sprawdzanie opisów wstrzymane na 3 min.';
+    statusNote = 'Facebook tymczasowo ogranicza liczbę zapytań. Sprawdzanie opisów wznowi się za 3 minuty.';
     clearTimeout(resumeTimer);
     resumeTimer = setTimeout(() => {
       statusNote = '';
@@ -533,7 +538,7 @@
       __relay_internal__pv__MarketplacePDPJobIsShareToGroupsEnabledOnCometrelayprovider: false,
     },
   };
-  const OUTDATED_NOTE = 'Facebook zmienił sposób ładowania ogłoszeń – otwórz dowolne ogłoszenie, a filtr się dostosuje.';
+  const OUTDATED_NOTE = 'Facebook zmienił sposób wczytywania ogłoszeń. Otwórz dowolne ogłoszenie – filtr dostosuje się automatycznie.';
 
   let pdpQuery = DEFAULT_PDP_QUERY;
   let queryOutdated = false;
@@ -712,7 +717,7 @@
     try {
       chrome.storage.sync.set({ settings: next });
     } catch (e) {
-      statusNote = 'Odśwież stronę – rozszerzenie zostało zaktualizowane.';
+      statusNote = 'Rozszerzenie zostało zaktualizowane. Odśwież stronę, aby kontynuować.';
       updatePill();
     }
   }
@@ -728,13 +733,13 @@
       pill.id = 'fmf-pill';
       pillText = document.createElement('span');
       pillText.className = 'fmf-pill-text';
-      pillText.title = 'Filtr aut – kliknij, aby włączyć/wyłączyć';
+      pillText.title = 'Kliknij, aby włączyć lub wyłączyć filtr';
       pillText.addEventListener('click', () => saveSettings(Object.assign({}, settings, { enabled: !settings.enabled })));
       const gear = document.createElement('button');
       gear.type = 'button';
       gear.className = 'fmf-pill-gear';
       gear.textContent = 'Filtry';
-      gear.title = 'Pokaż ustawienia filtra';
+      gear.title = 'Otwórz ustawienia filtra';
       gear.addEventListener('click', showPanel);
       pill.append(pillText, gear);
       document.body.appendChild(pill);
@@ -745,14 +750,14 @@
     // The docked panel shows the same numbers, so the pill would only cover the sidebar.
     pill.hidden = !panel.host.classList.contains('floating');
     let text;
-    if (!s.enabled) text = 'Filtr aut: wyłączony (kliknij, aby włączyć)';
-    else if (!s.hasFilters) text = 'Filtr aut: brak filtrów – ustaw je w panelu „Filtry”';
+    if (!s.enabled) text = 'Filtr aut wyłączony · kliknij, aby włączyć';
+    else if (!s.hasFilters) text = 'Filtr aut · ustaw kryteria w „Filtry”';
     else {
-      const parts = [`${s.shown} pasuje`];
-      if (s.hidden) parts.push(`${s.hidden} ${settings.rejectMode === 'dim' ? 'przyciemnionych' : 'ukrytych'}`);
-      if (s.pending) parts.push(`${s.pending} sprawdzam`);
-      if (s.unknown) parts.push(`${s.unknown} bez danych`);
-      text = 'Filtr aut: ' + parts.join(' · ');
+      const parts = [`Pasuje: ${s.shown}`];
+      if (s.hidden) parts.push(`Odfiltrowane: ${s.hidden}`);
+      if (s.pending) parts.push(`Sprawdzane: ${s.pending}`);
+      if (s.unknown) parts.push(`Bez danych: ${s.unknown}`);
+      text = 'Filtr aut · ' + parts.join(' · ');
     }
     if (s.note) text += ' — ' + s.note;
     pill.dataset.off = String(!s.enabled);

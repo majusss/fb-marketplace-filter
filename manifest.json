@@ -3,10 +3,10 @@
   "name": "Filtr aut – Facebook Marketplace",
   "short_name": "Filtr aut",
   "version": "1.0.0",
-  "description": "Filtruje ogłoszenia samochodów na Facebook Marketplace po roku, paliwie, skrzyni biegów i przebiegu – także gdy dane są tylko w opisie.",
+  "description": "Filtruj samochody na Facebook Marketplace po roczniku, paliwie (także LPG), skrzyni i przebiegu – nawet gdy dane są tylko w opisie.",
   "permissions": ["storage"],
   "action": {
-    "default_title": "Filtr aut",
+    "default_title": "Filtr aut – ustawienia",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
