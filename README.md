@@ -64,11 +64,6 @@ a także daty, które nie są rokiem produkcji: „kupione w 2019 roku”, „ub
 
 ## Instalacja
 
-### Z Chrome Web Store / Edge Add-ons
-Kliknij w banerze powyżej i zainstaluj rozszerzenie.
-
-### Ręcznie (z kodu)
-
 1. Pobierz kod: na GitHubie **Code → Download ZIP** i rozpakuj (albo `git clone`).
 2. Otwórz w przeglądarce `chrome://extensions` (w Edge: `edge://extensions`).
 3. Włącz **Tryb dewelopera** (przełącznik w prawym górnym rogu).
