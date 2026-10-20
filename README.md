@@ -6,8 +6,6 @@
 na Facebook Marketplace po roku produkcji, paliwie, skrzyni biegów i przebiegu –
 także wtedy, gdy sprzedający nie wypełnił pól pojazdu.**
 
-[![Chrome](https://img.shields.io/badge/Chrome-Chrome%20Web%20Store-blue?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/)
-[![Edge](https://img.shields.io/badge/Edge-Available-green?style=flat-square&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons)
 [![Licencja](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#licencja)
 
 </div>
