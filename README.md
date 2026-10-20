@@ -103,6 +103,10 @@ Jeśli Facebook był już otwarty – odśwież kartę.
 - **Niepasujące ogłoszenia** – ukrywać całkowicie albo tylko przyciemniać
   (po najechaniu myszką widać je normalnie, razem z powodem odrzucenia).
 - **Sprawdzaj opisy ogłoszeń** – bez tej opcji filtr korzysta tylko z tytułu i karty ogłoszenia.
+- **Ukrywaj części i akcesoria** – felgi, koła, rozrząd, lampy, ogłoszenia „na części”
+  i typu „kupię” nie są autami; bez tej opcji pojawiają się z „?” (bo nie mają danych
+  o pojeździe), z opcją są ukrywane w całości. Werdykt w diagnostyce: „TO NIE JEST AUTO”,
+  wraz z trafionym zwrotem (np. *części lub akcesoria: „na części”*).
 - **Wyczyść pamięć** – wyniki sprawdzania ogłoszeń są zapamiętywane na 7 dni, żeby nie
   pobierać ich ponownie; ten przycisk je usuwa.
 

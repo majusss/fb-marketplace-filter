@@ -220,6 +220,48 @@ test('fuel: "dizel" (Polish spelling) is recognized as diesel', () => {
   assert.deepEqual(res.fuels, ['diesel']);
 });
 
+test('not-car: parts listings are detected', () => {
+  const cases = [
+    // [title, text, type]
+    ['Felgi aluminiowe 17 5x114.3 z oponami 215/45/17 toyota honda Hyundai Kia', '', 'parts'],
+    ['Koła alufelgi honda 5x114.3 et55 R18 J8', '', 'parts'],
+    ['Stalówki 4x100', '', 'parts'],
+    ['Rozrząd Accord', 'ŁAŃCUCH (58L) (DAIDO) oryginał OE HONDA', 'parts'],
+    ['Komplet kół Honda 17” – felgi aluminiowe + opony zimowe Continental 225/45 R17', '', 'parts'],
+    ['2004 Honda civic 7 1.7b automat części', '', 'parts'], // title ends with "części"
+    ['2020 Honda Accord', 'Sprzedam części zapraszam do kontaktu', 'parts'],
+    ['2005 Honda Civic', 'Mam na sprzedaż Civica 7 na części. Piszcie co potrzebujecie.', 'parts'],
+    ['Accord 6', 'Zakupię Accord 6, najlepiej na części, może być bez dokumentów', 'parts'],
+    ['Lampa przednia lewa Honda Accord VIII', '', 'parts'],
+    ['Silnik 1.9 TDI do Accorda', '', 'parts'],
+  ];
+  for (const [title, text, type] of cases) {
+    assert.deepEqual(FMF.detectNotCar(title, text), { type, match: FMF.detectNotCar(title, text).match }, title);
+  }
+});
+
+test('not-car: "wanted" ads are detected', () => {
+  assert.equal(FMF.detectNotCar('Kupię auto', 'Kupię auto Honda accord 2005-2007').type, 'wanted');
+  assert.equal(FMF.detectNotCar('Szukam Hondy', '').type, 'wanted');
+});
+
+test('not-car: real cars are never flagged', () => {
+  const cases = [
+    ['Honda Acocrd 2.0+gaz 2011', 'Honda Accord 2.0 z gazem LPG, skrzynia manualną 6 biegów.'],
+    ['Anglik', 'posiadam Honda Accord VII 2.2 dizel niski przebieg 110000 mil'],
+    ['2008 Honda CR-V', 'Witam sprzedam Hondę CRV 2.2 diesel dorzucę komplet opon wielosezonowych'],
+    ['Honda accord ES 2.0 LPG', 'Witam do sprzedania mam (uszkodzoną) Hondę Accord ES 1999 2.0 LPG'],
+    ['Honda Accord VII 2.0 i-VTEC + LPG | 2003 r. |', 'Dwa komplety felg lato/zima z dobrymi oponami.'],
+    ['2005 Honda Civic', 'Na sprzedaż mój samochód, zasilany benzyną i gazem LPG. Butla ważna do 2030 roku.'],
+    ['Cześć, sprzedam Hondę Accord', 'auto zadbane, silnik 2.0 optimalne spalanie'],
+    ['Kupiona w 2019, Honda CR-V', 'auto sprawne'],
+    ['2005 Honda Civic', 'nowe hamulce i filtry wymienione, polecam'],
+  ];
+  for (const [title, text] of cases) {
+    assert.equal(FMF.detectNotCar(title, text), null, title + ' / ' + text);
+  }
+});
+
 test('diagnostics: explains why a listing was rejected', () => {  const settings = FMF.normalizeSettings({
     yearMin: 2005,
     fuels: ['petrol', 'lpg'],

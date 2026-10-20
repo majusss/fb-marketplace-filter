@@ -207,9 +207,17 @@
 
     const info = FMF.mergeInfo(listing.cardInfo, listing.details);
     const ev = FMF.evaluate(info, settings);
+    const notCar = settings.partsHide
+      ? FMF.detectNotCar(
+          info.title,
+          ((listing.cardInfo && listing.cardInfo.text) || '') + '\n' + ((listing.details && listing.details.raw && listing.details.raw.description) || '')
+        )
+      : null;
+    listing.notCar = notCar;
 
     let state;
     if (!settings.enabled) state = 'off';
+    else if (notCar) state = 'notcar';
     else if (ev.verdict === 'reject') state = 'reject';
     else if (ev.verdict === 'match') state = 'match';
     else if (settings.fetchDetails && !queryOutdated && canStillLoad(listing)) state = 'pending';
@@ -271,7 +279,13 @@
       reasons: explanation.rejected,
       missing: explanation.missing,
     };
-
+    if (state === 'notcar' && listing.notCar) {
+      rec.reasons = [
+        (listing.notCar.type === 'wanted' ? 'ogłoszenie kupna: ' : 'części lub akcesoria: ') + `„${listing.notCar.match}"`,
+      ];
+      rec.missing = [];
+      rec.verdict = 'notcar';
+    }
     const signature = JSON.stringify([rec.state, rec.parsed, rec.fb, rec.reasons]);
     const old = diagnostics.get(listing.id);
     if (old && old.signature === signature) return;
@@ -308,7 +322,7 @@
 
   function render(root, listing, state, info, ev) {
     let visual = null;
-    if (state === 'reject' || state === 'reject-unknown') visual = settings.rejectMode === 'dim' ? 'dimmed' : 'hidden';
+    if (state === 'reject' || state === 'reject-unknown' || state === 'notcar') visual = settings.rejectMode === 'dim' ? 'dimmed' : 'hidden';
     else if (state === 'pending' || state === 'unknown' || state === 'match') visual = state;
 
     if (visual === 'hidden' && containsOtherItem(root, listing.id)) {
@@ -674,7 +688,7 @@
       if (!firstConnectedRoot(listing)) continue;
       stats.total++;
       if (listing.state === 'pending') stats.pending++;
-      else if (listing.state === 'reject' || listing.state === 'reject-unknown') stats.hidden++;
+      else if (listing.state === 'reject' || listing.state === 'reject-unknown' || listing.state === 'notcar') stats.hidden++;
       else {
         stats.shown++;
         if (listing.state === 'unknown') stats.unknown++;

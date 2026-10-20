@@ -116,6 +116,8 @@
         </div>
         <label class="check"><input type="checkbox" name="fetchDetails"><span>Sprawdzaj opisy ogłoszeń
           <small>Paliwa i skrzyni zwykle nie widać na liście.</small></span></label>
+        <label class="check"><input type="checkbox" name="partsHide"><span>Ukrywaj części i akcesoria
+          <small>Felgi, koła, rozrząd, ogłoszenia typu „kupię”.</small></span></label>
         <label class="check"><input type="checkbox" name="showBadges"><span>Pokazuj etykiety na ogłoszeniach</span></label>
         <div class="field">
           <div class="label">Diagnostyka</div>
@@ -188,6 +190,7 @@
         for (const b of shadow.querySelectorAll(`[data-seg="${name}"] button`)) b.setAttribute('aria-pressed', String(settings[name] === b.value));
       }
       $('[name=fetchDetails]').checked = settings.fetchDetails;
+      $('[name=partsHide]').checked = settings.partsHide;
       $('[name=showBadges]').checked = settings.showBadges;
       $('[name=debugLog]').checked = settings.debugLog;
       updateWarning();
@@ -232,7 +235,7 @@
       const action = e.target.closest('[data-action]');
       if (action && action.dataset.action === 'reset') {
         update(FMF.normalizeSettings({ enabled: settings.enabled, unknownMode: settings.unknownMode, rejectMode: settings.rejectMode,
-          fetchDetails: settings.fetchDetails, showBadges: settings.showBadges }));
+          fetchDetails: settings.fetchDetails, partsHide: settings.partsHide, showBadges: settings.showBadges }));
       } else if (action && action.dataset.action === 'clearCache') {
         hooks.clearCache();
       } else if (action && action.dataset.action === 'toggleLog') {
@@ -244,7 +247,7 @@
       }
     });
 
-    for (const name of ['fetchDetails', 'showBadges', 'debugLog']) {
+    for (const name of ['fetchDetails', 'partsHide', 'showBadges', 'debugLog']) {
       $(`[name=${name}]`).addEventListener('change', (e) => update({ [name]: e.target.checked }));
     }
 

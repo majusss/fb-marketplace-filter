@@ -40,6 +40,7 @@
     form.querySelector(`input[name="unknownMode"][value="${settings.unknownMode}"]`).checked = true;
     form.querySelector(`input[name="rejectMode"][value="${settings.rejectMode}"]`).checked = true;
     $('fetchDetails').checked = settings.fetchDetails;
+    $('partsHide').checked = settings.partsHide;
     $('showBadges').checked = settings.showBadges;
     $('debugLog').checked = settings.debugLog;
     updateWarnings();
@@ -57,6 +58,7 @@
       unknownMode: checked('unknownMode')[0],
       rejectMode: checked('rejectMode')[0],
       fetchDetails: $('fetchDetails').checked,
+      partsHide: $('partsHide').checked,
       showBadges: $('showBadges').checked,
       debugLog: $('debugLog').checked,
     });

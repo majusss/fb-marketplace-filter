@@ -33,6 +33,7 @@
     mileageMax: null,
     unknownMode: 'show', // 'show' | 'hide' – listings where the data could not be found
     rejectMode: 'hide', // 'hide' | 'dim' – listings that do not match
+    partsHide: false, // hide listings that are not a car (parts / accessories)
     fetchDetails: true,
     showBadges: true,
     debugLog: false, // write the diagnostics log to the browser console
@@ -616,6 +617,43 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Listings that are not a car: parts, accessories and "wanted" ads.
+  // Only ever used when the user switches on "Ukrywaj części i akcesoria",
+  // so prefer missing a few parts over hiding a real car.
+  // ---------------------------------------------------------------------------
+
+  // A title that starts or ends with a part name is almost never a car.
+  // Wheels/tyres and body parts are safe as title markers; single part words in
+  // a description may also just describe a whole car ("dorzucę komplet opon",
+  // "nowe hamulce"), so the description layer only gets strict part-ad wording.
+  const PARTS_TITLE_START = new RegExp(
+    '^(?:zamieszczone\\s+\\S+|\\d+\\s*x\\s*\\d+\\s*)?(?:felg\\w*|alufelg\\w*|kol\\w*|opon\\w*|komplet\\b|stal[óo]wk\\w*|stalki|rozrz[ąa]d\\w*|lamp\\w*|swiatl\\w*|drzwi\\b|mask\\w*|zderzak\\w*|blotnik\\w*|klap\\w*|lusterk\\w*|lustro|kierownic\\w*|katalizator\\w*|kolektor\\w*|wydech\\w*|turbina|turbosprez\\w*|amortyzat\\w*|sprezyn\\w*|wahacz\\w*|wtrysk\\w*|pomp\\w*|klocki\\b|tarcz\\w*|hamulc\\w*|hak\\w*|dywanik\\w*|pokrowc\\w*|oslon\\w*|podsufitk\\w*|alternator\\w*|rozrusznik\\w*|dwumasa\\w*|silnik\\w*|skrzynia\\s+biegow\\b|czesci\\b)'
+  );
+  const PARTS_TITLE_END = new RegExp(
+    '\\b(?:czesci|akcesoria|felgi|alufelgi|kola|kolo|kolach|opony|opona|lampy|lampy przednie|lamki|maska|zderzak|zderzaki|klapa|klapka|blotnik|blotniki|lusterka|lusterko|silnik|skrzynia biegow|katalizator|turbina|alternator|rozrusznik|dywaniki|hamulce|rozrzad)\\s*$'
+  );
+
+  // Unambiguous phrases; single part words in a description may also describe
+  // a whole car ("dorzucę komplet opon", "nowe hamulce"), so only strict
+  // "this is a parts ad" wording counts.
+  const PARTS_PHRASE = /(?:\bna\s+czesci\b|\bdo\s+czesci\b|\bczesci\s+(?:samochodow\w*|motoryzacyjne|do\s)|\bsprzedam\s+czesci\b|\bczesci\s+zapraszam\b|\bdo\s+rozbierania\b|\btylko\s+czesci\b)/i;
+  const WANTED_TITLE = /^(?:kupie|zakupie|poszuku?j\w*|szukam\w*)\b/;
+
+  // Returns { type: 'parts' | 'wanted', match: string } or null.
+  function detectNotCar(title, text) {
+    const t = normalize(title);
+    if (!WANTED_TITLE.test(t)) {
+      if (PARTS_TITLE_START.test(t)) return { type: 'parts', match: t.slice(0, 30) };
+      const ended = PARTS_TITLE_END.exec(t);
+      if (ended) return { type: 'parts', match: ended[0].trim() };
+    }
+    const m = PARTS_PHRASE.exec(normalize(text));
+    if (m) return { type: 'parts', match: m[0].trim() };
+    if (WANTED_TITLE.test(t)) return { type: 'wanted', match: t.split(/\s+/)[0] };
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
   // Filtering
   // ---------------------------------------------------------------------------
 
@@ -635,6 +673,7 @@
     s.transmissions = Array.isArray(s.transmissions) ? s.transmissions.filter((t) => TRANSMISSIONS.includes(t)) : [];
     s.unknownMode = s.unknownMode === 'hide' ? 'hide' : 'show';
     s.rejectMode = s.rejectMode === 'dim' ? 'dim' : 'hide';
+    s.partsHide = s.partsHide === true;
     s.fetchDetails = s.fetchDetails !== false;
     s.showBadges = s.showBadges !== false;
     s.debugLog = s.debugLog === true;
@@ -724,6 +763,7 @@
     reject: 'ODRZUCONE',
     unknown: 'BEZ DANYCH',
     'reject-unknown': 'ODRZUCONE (brak danych)',
+    notcar: 'TO NIE JEST AUTO',
     pending: 'SPRAWDZAM OPIS…',
     off: 'FILTR WYŁĄCZONY',
   };
@@ -799,6 +839,7 @@
     parseItemHtml,
     analyzeDetails,
     mergeInfo,
+    detectNotCar,
     normalizeSettings,
     activeFilters,
     evaluate,
