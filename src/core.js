@@ -6,7 +6,7 @@
   'use strict';
 
   // Bump when detection logic changes so cached results get recomputed.
-  const PARSER_VERSION = 3;
+  const PARSER_VERSION = 5;
 
   const FUELS = ['petrol', 'diesel', 'lpg', 'hybrid', 'electric'];
   const TRANSMISSIONS = ['manual', 'automatic'];
@@ -157,11 +157,19 @@
       /\b(?:lpg|cng)\b/g,
       /\bautogaz\w*/g,
       /\binstalacj\w*\s+gazow\w*/g,
+      /\b(?:uklad|system|zespol|wtrysk)\w*\s+gazow\w*/g,
       /\b(?:na|z)\s+gaz(?:ie|em)?\b/g,
       /\+\s*gaz\b/g,
       /\b\d[.,]\d\s*gaz\b/g, // "Accord 2.0 GAZ"
       /\bbutl[aeiy]\w*/g, // "butla gazu na 8 lat", "legalizacja butli"
       /\bzbiornik\w*\s+(?:na\s+)?(?:gaz|lpg)\w*/g,
+      /\bsekwencyjn\w*\s+gaz\w*/g, // "z sekwencyjnym gazem"
+      // "gaz jest do 2033", "gaz ważny do 2031", "gaz w aucie".
+      /\bgaz\s+(?:jest|wazn\w*|do\s+\d|serwis\w*|w\s+aucie|w\s+samochodzie|zainstalowan\w*|w\s+roku|uklad\w*)/g,
+      /\bgaz\b(?=\s*(?:[.,;!?]|$))/g,
+      // "z gazem", "na gazie", "ważność gazu" - but not "pedal gazu".
+      // Stems are written without diacritics: normalize() strips them.
+      /(?<!\b(?:amortyzator|sprezyn|hamulc|pedal|linka|przycisk|pasek|tloczek|silownik|kotwic|wydech|zawor|podusz|tysn|plyn|filtr|wal)\w*\s)\bgaz(?:em|ie|u)\b/g,
       /\bgaz\s*\+/g,
       /\bb\s?\+\s?g\b/g,
       /\bgaz\s+(?:sekwencj\w*|brc|landi\w*|prins|stag)\b/g,
@@ -257,6 +265,7 @@
     automatic: [
       new RegExp(GEARBOX_PREFIX + '(?:automat|polautomat|sekwencyjn)\\w*', 'g'),
       /\b(?:automatyczn|polautomatyczn)\w*\s+skrzyni\w*/g,
+      /\bsekwencyjn\w*\s+skrzyni\w*\b(?!\s*gazow)/g, // "sekwencyjna skrzynia biegów"
       { re: /\b(?:automat|automatem|polautomat\w*)\b/g, bare: true },
       /\b(?:dsg\d*|s[\s-]?tronic|tiptronic|multitronic|steptronic|sportronic|\dg[\s-]?tronic|g-tronic|geartronic|powershift|speedshift|xtronic|lineartronic|e-?cvt|cvt|edc|dct|pdk|selespeed|easytronic|durashift|dualogic|smg|zf\s?\dhp|aisin)\b/g,
       /\bautomatic\s+(?:transmission|gearbox)\b/g,
@@ -326,9 +335,19 @@
 
   const YEAR_LABELED = /(?:^|[^a-z])(?:rok\s+produkcji|rok\s+prod\.?|r\.\s*prod\.?|rocznik|year)\s*[:\-–]?\s*((?:19|20)\d{2})(?!\d)|(?:^|[^a-z])rok\s*[:\-–]\s*((?:19|20)\d{2})(?!\d)/;
 
-  // "Vectra 1.8 + LPG 2006r." – but not "kupiony w 2019 r." or "od 2019r." (ownership dates).
-  const YEAR_SUFFIXED = /(?<![\d.,])((?:19|20)\d{2})\s?(?:r\b\.?|rok\b|rocznik\b)/g;
-  const YEAR_SUFFIX_CONTEXT = /(?:\b(?:w|we|od|do|z|ze|roku|since|in)|kupion\w*|sprowadzon\w*|zarejestrowan\w*|rejestracj\w*|wymienion\w*|przeglad\w*|oc)\s*$/;
+  // "Vectra 1.8 + LPG 2006r.", "Accord z 2006 roku" - but not "kupiony w 2019 roku"
+  // or "ubezpieczenie do 5 maja 2027 roku".
+  const YEAR_SUFFIXED = /(?<![\d.,])((?:19|20)\d{2})\s?(?:r\b\.?|rok(?:u|iem)?\b|rocznik\b)/g;
+  // Words that mean the year belongs to an event, not to the car.
+  const EVENT_BEFORE_YEAR =
+    /(?:kup\w+|sprowadz\w*|zarejestrow\w*|rejestracj\w*|wymien\w*|przeglad\w*|oc\s+(?:w|na)\s*|od|do|styczn\w*|lut\w*|mar\w*|kwietn\w*|maja|czerwc\w*|lipc\w*|sierpn\w*|wrzesi\w*|pazdziernik\w*|listopad\w*|grudn\w*)\s*(?:w|we)?\s*$/;
+  const EVENT_AFTER_YEAR = /^\s*(?:roku\s+)?(?:wymienion\w*|kupion\w*|serwisowan\w*|napraw\w*|przeglad\w*|zakupion\w*|oddan\w*)\b/;
+
+  function isEventYear(text, index, end) {
+    const before = clauseBefore(text, index, 40);
+    if (EVENT_BEFORE_YEAR.test(before)) return true;
+    return EVENT_AFTER_YEAR.test(clauseAfter(text, end, 25));
+  }
 
   function yearFromText(text) {
     const t = normalize(text);
@@ -338,7 +357,7 @@
       return plausibleYear(y) ? y : null;
     }
     for (const s of t.matchAll(YEAR_SUFFIXED)) {
-      if (YEAR_SUFFIX_CONTEXT.test(t.slice(Math.max(0, s.index - 30), s.index))) continue;
+      if (isEventYear(t, s.index, s.index + s[0].length)) continue;
       if (plausibleYear(+s[1])) return +s[1];
     }
     return null;

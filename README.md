@@ -51,13 +51,14 @@ pola puste albo wpisał „Inne”.
 Rozpoznawane są między innymi:
 
 - `1.9 TDI`, `320d`, `1.4 TSI` → diesel / benzyna,
-- `1.8 + LPG`, `B+G`, `butla gazu`, `instalacja gazowa BRC` → benzyna + LPG,
+- `1.8 + LPG`, `B+G`, `butla gazu`, `serwis gazu`, `sekwencyjny gaz`, `instalacja gazowa BRC` → benzyna + LPG,
 - `skrzynia automatyczna`, `S-tronic`, `DSG`, `6-biegowa` → automat / manualna,
-- `Rok produkcji: 2012`, `2006r.`, `2011 rok` → rok,
+- `Rok produkcji: 2012`, `2006r.`, `z 2006 roku` → rok,
 - `Przebieg: 180 tys.`, `345.000 przebiegu` → przebieg.
 
 Pułapki są pomijane: „klimatyzacja automatyczna”, „elektryczne szyby”, „amortyzatory gazowe”,
-„skrzynia sekwencyjna”, „pedał gazu”, „bez LPG”, „nie ma automatu”.
+„skrzynia sekwencyjna”, „pedał gazu”, „przycisk gazu”, „bez LPG”, „nie ma automatu” –
+a także daty, które nie są rokiem produkcji: „kupione w 2019 roku”, „ubezpieczenie do 5 maja 2027 roku”.
 
 ---
 

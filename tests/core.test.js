@@ -20,6 +20,16 @@ test('fuel: explicit words and engine codes', () => {
   );
   assert.deepEqual(FMF.detectFuels('Benzyna, legalizacja butli do 2030'), ['petrol', 'lpg']);
   assert.equal(FMF.detectFuels('Wymieniony pedał gazu i linka'), null);
+  assert.equal(FMF.detectFuels('Przycisk gazu nie działa'), null);
+  assert.equal(FMF.detectFuels('Sprężyny gazowe w zawieszeniu'), null);
+  assert.deepEqual(
+    FMF.detectFuels('Sprzedam Hondę Accord z 2007r. o pojemności 2.0 benzyna z sekwencyjnym gazem ważnym do 2031r.'),
+    ['petrol', 'lpg']
+  );
+  assert.deepEqual(FMF.detectFuels('Samochód na gazie, butla gazu'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('serwis gazu (filtry, przegląd), Gaz jest do 6 grudnia 2033 roku'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('układ gazowy w aucie, gaz ważny do 2031'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('Auto ma gaz.'), ['petrol', 'lpg']);
   assert.deepEqual(FMF.detectFuels('Toyota Auris Hybrid'), ['hybrid']);
   assert.deepEqual(FMF.detectFuels('Nissan Leaf, samochód w pełni elektryczny'), ['electric']);
   assert.deepEqual(FMF.detectFuels('Fiat Punto, zamienię na diesla'), null);
@@ -50,6 +60,8 @@ test('transmission: gearbox phrases', () => {
   assert.equal(FMF.detectTransmission('Toyota Corolla 1.6 Automat'), 'automatic');
   assert.equal(FMF.detectTransmission('Ręczna skrzynia biegów w idealnym stanie'), 'manual');
   assert.equal(FMF.detectTransmission('Skrzynia 6-biegowa'), 'manual');
+  assert.equal(FMF.detectTransmission('sekwencyjna skrzynia biegów'), 'automatic');
+  assert.equal(FMF.detectTransmission('sekwencyjna skrzynia gazowa'), null);
   assert.equal(FMF.detectTransmission('Skrzynia biegów 6-biegowa automatyczna'), 'automatic');
   assert.equal(FMF.detectTransmission('Skrzynia biegow reczna'), 'manual');
 });
@@ -78,6 +90,9 @@ test('year from titles and text', () => {
   assert.equal(FMF.yearFromText('Golf 2011 rok, zadbany'), 2011);
   assert.equal(FMF.yearFromText('Auto kupione w 2019r. w salonie'), null);
   assert.equal(FMF.yearFromText('Posiadam od 2018 r.'), null);
+  assert.equal(FMF.yearFromText('Sprzedam Hondę Accord z 2007r. o pojemności 2.0'), 2007);
+  assert.equal(FMF.yearFromText('Mam na sprzedaż Hondę Accord z 2006 roku w wersji sedan'), 2006);
+  assert.equal(FMF.yearFromText('Ubezpieczenie jest do 5 maja 2027 roku. Przegląd do 9 lutego 2027 roku'), null);
 });
 
 test('mileage parsing', () => {
