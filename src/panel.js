@@ -126,7 +126,6 @@
             <small>Przydatne przy zgłaszaniu błędów (DevTools → Console).</small></span></label>
           <button type="button" class="wide" data-action="toggleLog">Sprawdzone ogłoszenia (<span data-log-count>0</span>)</button>
           <div class="log" data-log hidden></div>
-          <button type="button" class="wide" data-action="copyLog">Kopiuj raport diagnostyczny</button>
         </div>
         <footer class="always">
           <button type="button" data-action="reset">Wyczyść filtry</button>
@@ -243,8 +242,6 @@
         logOpen = !logOpen;
         logBox.hidden = !logOpen;
         renderLog();
-      } else if (action && action.dataset.action === 'copyLog') {
-        copyLog();
       }
     });
 
@@ -285,18 +282,6 @@
           return box;
         })
       );
-    }
-
-    async function copyLog() {
-      const text = hooks.getDiagnosticsText ? hooks.getDiagnosticsText() : '';
-      const button = $('[data-action=copyLog]');
-      try {
-        await navigator.clipboard.writeText(text);
-        button.textContent = 'Skopiowano do schowka';
-      } catch (e) {
-        button.textContent = 'Nie udało się skopiować';
-      }
-      setTimeout(() => (button.textContent = 'Kopiuj raport diagnostyczny'), 2000);
     }
 
     function setCollapsed(collapsed, save) {

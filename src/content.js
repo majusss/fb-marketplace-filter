@@ -312,10 +312,6 @@
     return [...diagnostics.values()].reverse();
   }
 
-  function diagnosticsText() {
-    return FMF.diagnosticsText(diagnosticsList());
-  }
-
   function refreshAll() {
     for (const listing of listings.values()) applyListing(listing);
     updatePill();
@@ -776,7 +772,6 @@
       save: saveSettings,
       clearCache: clearDetailsCache,
       getDiagnostics: diagnosticsList,
-      getDiagnosticsText: diagnosticsText,
       saveCollapsed(collapsed) {
         try {
           chrome.storage.local.set({ panelCollapsed: collapsed });
