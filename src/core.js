@@ -6,7 +6,7 @@
   'use strict';
 
   // Bump when detection logic changes so cached results get recomputed.
-  const PARSER_VERSION = 5;
+  const PARSER_VERSION = 6;
 
   const FUELS = ['petrol', 'diesel', 'lpg', 'hybrid', 'electric'];
   const TRANSMISSIONS = ['manual', 'automatic'];
@@ -140,6 +140,7 @@
   const FUEL_PATTERNS = {
     diesel: [
       /\bdi(?:e?sel|esl)\w*/g,
+      /\bdizel\w*/g, // "2.2 dizel" - Polish spelling of diesel
       /\bolej\w*\s+napedow\w*/g,
       /\b(?:tdi|tdci|cdi|crdi|hdi|bluehdi|e-?hdi|dci|cdti|jtd|jtdm|multijet|d-?4d|tddi|sdi|crd|ctdi|i-?ctdi|i-?dtec|dtec|bluetec|skyactiv-?d|tdv6|tdv8|td4|sd4|ed4|ecoblue|duratorq|bitdi)\b/g,
       /(?<![a-z\d])[a-z]?\d{3}x?d\b/g, // BMW / Mercedes: 320d, 530xd, c220d

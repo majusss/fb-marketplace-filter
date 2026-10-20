@@ -211,6 +211,15 @@ test('fuel: the title decides when the description mentions both', () => {
   assert.deepEqual(petrol.fuels, ['petrol', 'lpg']);
 });
 
+test('fuel: "dizel" (Polish spelling) is recognized as diesel', () => {
+  const res = FMF.analyzeDetails({
+    title: 'Anglik',
+    description: 'posiadam Honda Accord VII 2.2 dizel niski przebieg 110000 mil',
+    fbFuel: null,
+  });
+  assert.deepEqual(res.fuels, ['diesel']);
+});
+
 test('diagnostics: explains why a listing was rejected', () => {  const settings = FMF.normalizeSettings({
     yearMin: 2005,
     fuels: ['petrol', 'lpg'],

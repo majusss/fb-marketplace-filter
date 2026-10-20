@@ -114,7 +114,9 @@ W sekcji **Diagnostyka** panelu (albo w oknie pod ikoną rozszerzenia) widać dl
 każdego sprawdzonego ogłoszenia:
 
 - **FB pokazuje** – dane, które Facebook sam zwraca dla tego auta (paliwo, skrzynia,
-  przebieg) oraz fragment opisu,
+  przebieg),
+- **Karta** – tekst, który widać na karcie ogłoszenia (cena, tytuł, miejsce),
+- **Opis** – fragment opisu z pobranego ogłoszenia,
 - **Rozszerzenie** – rok, paliwo, skrzynię i przebieg wyciągnięte z tych danych,
 - **Werdykt** – `PASUJE` / `ODRZUCONE` / `BEZ DANYCH` z powodem, np.
   *„ODRZUCONE – paliwo: Diesel (wybrano: Benzyna, LPG/CNG)”*.
