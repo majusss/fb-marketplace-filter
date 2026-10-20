@@ -138,28 +138,23 @@ Jeśli Facebook był już otwarty, odśwież kartę.
 
 ## Diagnostyka
 
-Gdy nie wiesz, dlaczego ogłoszenie zniknęło (albo zostało), otwórz w panelu sekcję
-**Diagnostyka → Sprawdzone ogłoszenia**. Dla każdego ogłoszenia widać:
+Gdy nie wiesz, dlaczego ogłoszenie zniknęło (albo zostało), kliknij ikonę rozszerzenia
+i wybierz **Kopiuj raport diagnostyczny**. Raport obejmuje wszystkie sprawdzone ogłoszenia
+z bieżącej karty. Dla każdego z nich zawiera:
 
 | Pole | Co zawiera |
 | ---- | ---------- |
 | **Facebook** | dane, które Facebook podaje w polach pojazdu (paliwo, skrzynia, przebieg) |
 | **Na liście** | tekst widoczny na karcie ogłoszenia: cena, tytuł, miejscowość |
+| **Opis** | pełny opis ogłoszenia (do 1500 znaków) |
 | **Odczytano** | rocznik, paliwo, skrzynia i przebieg ustalone przez rozszerzenie |
 | **Werdykt** | `PASUJE`, `NIE PASUJE`, `BRAK DANYCH` lub `NIE SAMOCHÓD` – z powodem |
 
 Przykładowy werdykt: *„NIE PASUJE – paliwo: Diesel (wybrane: Benzyna, LPG/CNG)”*.
 
-<div align="center">
-  <img src="docs/screenshots/diagnostics.png" alt="Diagnostyka: dane z Facebooka, odczytane wartości i werdykt" width="420">
-  <p><em>Diagnostyka w panelu – dane z Facebooka, odczytane wartości i powód werdyktu.</em></p>
-</div>
-
-Żeby zgłosić błędny werdykt, kliknij ikonę rozszerzenia i wybierz **Kopiuj raport diagnostyczny**.
-Raport zawiera wszystkie sprawdzone ogłoszenia z bieżącej karty – razem z pełnym opisem
-(do 1500 znaków) – i jest gotowy do wklejenia w [zgłoszeniu na GitHubie](../../issues).
-Opcja **Zapisuj diagnostykę w konsoli** dodaje te same wpisy do konsoli przeglądarki
-(DevTools → Console).
+Raport jest gotowy do wklejenia w [zgłoszeniu na GitHubie](../../issues). W tym samym
+okienku jest opcja **Zapisuj diagnostykę w konsoli** (domyślnie wyłączona) – dodaje te same
+wpisy do konsoli przeglądarki (DevTools → Console).
 
 ---
 

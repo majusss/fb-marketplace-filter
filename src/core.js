@@ -750,6 +750,13 @@
     return s;
   }
 
+  // "Wyczyść filtry": drop the criteria, keep every other option.
+  function clearFilters(settings) {
+    return normalizeSettings(
+      Object.assign({}, settings, { yearMin: null, yearMax: null, fuels: [], transmissions: [], mileageMax: null })
+    );
+  }
+
   function activeFilters(settings) {
     const s = normalizeSettings(settings);
     return {
@@ -911,6 +918,7 @@
     mergeInfo,
     detectNotCar,
     normalizeSettings,
+    clearFilters,
     activeFilters,
     evaluate,
     explain,

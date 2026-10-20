@@ -771,7 +771,6 @@
     panel = FMF.createPanel({
       save: saveSettings,
       clearCache: clearDetailsCache,
-      getDiagnostics: diagnosticsList,
       saveCollapsed(collapsed) {
         try {
           chrome.storage.local.set({ panelCollapsed: collapsed });
@@ -936,8 +935,4 @@
     });
 
   setTimeout(pruneCache, 15000);
-  // Keeps the diagnostics log in the panel up to date.
-  setInterval(() => {
-    if (panel) panel.refreshLog();
-  }, 2000);
 })();

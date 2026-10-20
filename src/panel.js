@@ -62,18 +62,6 @@
     footer button { flex: 1; height: 36px; border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
       color: var(--primary-text, #050505); background: var(--secondary-button-background, #e4e6eb); }
     footer button:hover, .chip:hover { filter: brightness(1.08); }
-    .wide { width: 100%; height: 32px; margin-top: 6px; border: 0; border-radius: 6px; cursor: pointer; font: inherit;
-      font-size: 13px; font-weight: 600; color: var(--primary-text, #050505); background: var(--secondary-button-background, #e4e6eb); }
-    .log { max-height: 260px; overflow: auto; margin-top: 8px; padding: 8px; border-radius: 8px;
-      background: var(--comment-background, #f0f2f5); font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .log[hidden] { display: none; }
-    .log div + div { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--divider, #ced0d4); }
-    .log b, .log span { display: block; }
-    .log b { font-weight: 700; }
-    .log .v-reject { color: #e41e3f; font-weight: 700; }
-    .log .v-match { color: #1e8449; font-weight: 700; }
-    .log .v-unknown { color: var(--secondary-text, #65676b); font-weight: 700; }
-    .log .muted { color: var(--secondary-text, #65676b); }
     .close { display: none; flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; cursor: pointer; font-size: 16px;
       color: var(--secondary-text, #65676b); background: var(--secondary-button-background, #e4e6eb); }
     :host(.floating) .close { display: block; }
@@ -120,13 +108,6 @@
           <small>Felgi, opony, części zamienne i ogłoszenia „kupię”.</small></span></label>
         <label class="check"><input type="checkbox" name="showBadges"><span>Pokazuj etykiety na ogłoszeniach
           <small>Rok, paliwo i skrzynia bezpośrednio na zdjęciu.</small></span></label>
-        <div class="field">
-          <div class="label">Diagnostyka</div>
-          <label class="check"><input type="checkbox" name="debugLog"><span>Zapisuj diagnostykę w konsoli
-            <small>Przydatne przy zgłaszaniu błędów (DevTools → Console).</small></span></label>
-          <button type="button" class="wide" data-action="toggleLog">Sprawdzone ogłoszenia (<span data-log-count>0</span>)</button>
-          <div class="log" data-log hidden></div>
-        </div>
         <footer class="always">
           <button type="button" data-action="reset">Wyczyść filtry</button>
           <button type="button" data-action="clearCache" title="Usuwa zapamiętane wyniki sprawdzania ogłoszeń (przechowywane 7 dni)">Wyczyść pamięć</button>
@@ -192,7 +173,6 @@
       $('[name=fetchDetails]').checked = settings.fetchDetails;
       $('[name=partsHide]').checked = settings.partsHide;
       $('[name=showBadges]').checked = settings.showBadges;
-      $('[name=debugLog]').checked = settings.debugLog;
       updateWarning();
     }
 
@@ -234,54 +214,14 @@
       if (e.target.closest('.close')) return hooks.onClose && hooks.onClose();
       const action = e.target.closest('[data-action]');
       if (action && action.dataset.action === 'reset') {
-        update(FMF.normalizeSettings({ enabled: settings.enabled, unknownMode: settings.unknownMode, rejectMode: settings.rejectMode,
-          fetchDetails: settings.fetchDetails, partsHide: settings.partsHide, showBadges: settings.showBadges }));
+        update(FMF.clearFilters(settings));
       } else if (action && action.dataset.action === 'clearCache') {
         hooks.clearCache();
-      } else if (action && action.dataset.action === 'toggleLog') {
-        logOpen = !logOpen;
-        logBox.hidden = !logOpen;
-        renderLog();
       }
     });
 
-    for (const name of ['fetchDetails', 'partsHide', 'showBadges', 'debugLog']) {
+    for (const name of ['fetchDetails', 'partsHide', 'showBadges']) {
       $(`[name=${name}]`).addEventListener('change', (e) => update({ [name]: e.target.checked }));
-    }
-
-    // --- diagnostics log -----------------------------------------------------
-    const logBox = $('[data-log]');
-    let logOpen = false;
-
-    function renderLog() {
-      const records = hooks.getDiagnostics ? hooks.getDiagnostics() : [];
-      $('[data-log-count]').textContent = String(records.length);
-      if (!logOpen) return;
-      if (!records.length) {
-        logBox.textContent = 'Nie sprawdzono jeszcze żadnego ogłoszenia.';
-        return;
-      }
-      logBox.replaceChildren(
-        ...records.map((rec) => {
-          const box = document.createElement('div');
-          const title = document.createElement('b');
-          title.textContent = rec.title;
-          const fb = document.createElement('span');
-          fb.className = 'muted';
-          fb.textContent = 'Facebook: ' + FMF.fbSummary(rec);
-          const card = document.createElement('span');
-          card.className = 'muted';
-          card.textContent = 'Na liście: ' + (rec.card.text || '–');
-          const parsed = document.createElement('span');
-          parsed.className = 'muted';
-          parsed.textContent = 'Odczytano: ' + FMF.parsedSummary(rec);
-          const verdict = document.createElement('span');
-          verdict.className = 'v-' + (rec.state === 'match' ? 'match' : rec.state === 'reject' || rec.state === 'reject-unknown' || rec.state === 'notcar' ? 'reject' : 'unknown');
-          verdict.textContent = FMF.verdictText(rec);
-          box.append(title, fb, card, parsed, verdict);
-          return box;
-        })
-      );
     }
 
     function setCollapsed(collapsed, save) {
@@ -314,7 +254,6 @@
       },
       setStats,
       setCollapsed: (c) => setCollapsed(c, false),
-      refreshLog: renderLog,
     };
   }
 

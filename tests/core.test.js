@@ -242,6 +242,14 @@ test('mileage: placeholder odometer (999 km) falls back to the description', () 
   assert.equal(FMF.analyzeDetails({ ...base, odometer: { value: 187000, unit: 'KILOMETERS' }, description: '' }).mileageKm, 187000);
 });
 
+test('settings: diagnostics log is off by default, clearing filters keeps options', () => {
+  assert.equal(FMF.normalizeSettings().debugLog, false);
+  const s = FMF.normalizeSettings({ yearMin: 2005, fuels: ['lpg'], transmissions: ['manual'], mileageMax: 300000, debugLog: true, partsHide: true, rejectMode: 'dim' });
+  const cleared = FMF.clearFilters(s);
+  assert.deepEqual([cleared.yearMin, cleared.fuels, cleared.transmissions, cleared.mileageMax], [null, [], [], null]);
+  assert.deepEqual([cleared.debugLog, cleared.partsHide, cleared.rejectMode], [true, true, 'dim']);
+});
+
 test('not-car: parts listings are detected', () => {
   const cases = [
     // [title, text, type]

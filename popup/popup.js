@@ -88,7 +88,7 @@
   $('enabled').addEventListener('change', save);
 
   $('reset').addEventListener('click', () => {
-    settings = FMF.normalizeSettings({ enabled: settings.enabled });
+    settings = FMF.clearFilters(settings);
     fill();
     chrome.storage.sync.set({ settings });
   });
