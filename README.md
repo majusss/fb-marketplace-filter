@@ -175,7 +175,7 @@ Wszystko dzieje się lokalnie w przeglądarce.
 
 ```
 src/core.js      – parsowanie i logika filtrów (bez DOM, testowane w Node)
-src/content.js   – integracja ze stroną Marketplace, pobieranie danych ogłoszeń
+src/content.js   – integracja ze stroną Marketplace, pobieranie danych ogłoszeń, diagnostyka
 src/panel.js     – panel filtrów wstawiany w lewy pasek Marketplace (Shadow DOM)
 src/page-hook.js – działa w kontekście strony; podgląda zapytanie GraphQL Facebooka o ogłoszenie
 src/content.css  – ukrywanie / przyciemnianie, etykiety, licznik
