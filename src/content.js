@@ -124,8 +124,16 @@
   function clearRoot(root) {
     delete root.dataset.fmfState;
     root.classList.remove('fmf-has-badges');
-    const box = root.querySelector(':scope > .fmf-badges');
+    const box = root.querySelector('.fmf-badges');
     if (box) box.remove();
+  }
+
+  // Badges go on the bottom edge of the photo: Facebook uses the top-left
+  // corner for its own "Posted just now" label.
+  function badgeHost(root) {
+    const img = root.querySelector('img');
+    const host = img && img.parentElement;
+    return host && host !== root && root.contains(host) ? host : root;
   }
 
   function scan() {
@@ -145,6 +153,14 @@
     for (const listing of listings.values()) {
       // The card may have been empty (still rendering) when first seen.
       if (listing.cardInfo && !listing.cardInfo.title) applyListing(listing);
+      // The photo may load after the badges were drawn.
+      for (const root of listing.cards.keys()) {
+        const box = root.querySelector('.fmf-badges');
+        if (box && box.parentElement !== badgeHost(root)) {
+          applyListing(listing);
+          break;
+        }
+      }
       for (const [root, entry] of listing.cards) {
         if (!root.isConnected) {
           detachRoot(root, listing.id);
@@ -193,7 +209,7 @@
     if (!settings.enabled) state = 'off';
     else if (ev.verdict === 'reject') state = 'reject';
     else if (ev.verdict === 'match') state = 'match';
-    else if (settings.fetchDetails && canStillLoad(listing)) state = 'pending';
+    else if (settings.fetchDetails && !queryOutdated && canStillLoad(listing)) state = 'pending';
     else state = settings.unknownMode === 'hide' ? 'reject-unknown' : 'unknown';
 
     listing.state = state;
@@ -231,7 +247,7 @@
   }
 
   function renderBadges(root, state, info, ev) {
-    let box = root.querySelector(':scope > .fmf-badges');
+    let box = root.querySelector('.fmf-badges');
     if (!settings.showBadges || state === 'off') {
       if (box) box.remove();
       root.classList.remove('fmf-has-badges');
@@ -250,7 +266,8 @@
     else if (ev.verdict !== 'reject') for (const field of ev.missing) chips.push([MISSING_LABELS[field], 'unknown']);
 
     const signature = JSON.stringify(chips);
-    if (box && box.dataset.sig === signature) return;
+    const host = badgeHost(root);
+    if (box && box.dataset.sig === signature && box.parentElement === host) return;
     if (!chips.length) {
       if (box) box.remove();
       root.classList.remove('fmf-has-badges');
@@ -259,7 +276,11 @@
     if (!box) {
       box = document.createElement('div');
       box.className = 'fmf-badges';
-      root.appendChild(box);
+    }
+    if (box.parentElement !== host) {
+      for (const old of root.querySelectorAll('.fmf-badge-host')) old.classList.remove('fmf-badge-host');
+      host.classList.add('fmf-badge-host');
+      host.appendChild(box);
     }
     root.classList.add('fmf-has-badges');
     box.dataset.sig = signature;
@@ -321,7 +342,7 @@
 
   function pump() {
     const wait = pausedUntil - Date.now();
-    if (wait > 0) return;
+    if (wait > 0 || queryOutdated) return;
     while (activeFetches < MAX_CONCURRENT_FETCHES && queue.length) {
       const listing = queue.shift();
       if (listing.detailsState !== 'queued') continue;
@@ -351,6 +372,11 @@
       if (err && err.blocked) {
         listing.detailsState = 'idle';
         pauseFetching();
+      } else if (err && err.outdated) {
+        listing.detailsState = 'idle';
+        queryOutdated = true;
+        statusNote = OUTDATED_NOTE;
+        refreshAll();
       } else {
         listing.attempts++;
         listing.detailsState = 'error';
@@ -371,17 +397,147 @@
     }, BLOCK_PAUSE_MS);
   }
 
-  async function fetchDetails(id) {
-    const res = await fetch(`${location.origin}/marketplace/item/${id}/`, { credentials: 'include' });
-    const finalPath = new URL(res.url || location.href).pathname;
-    if (res.status === 429 || /^\/(?:login|checkpoint)/.test(finalPath)) {
-      const err = new Error('blocked');
-      err.blocked = true;
-      throw err;
-    }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return FMF.analyzeDetails(FMF.parseItemHtml(await res.text()));
+  // The listing page HTML is only an app shell; the listing itself is loaded
+  // with this GraphQL query. Its id/variables change with Facebook releases;
+  // page-hook.js picks up the current ones whenever the user opens a listing.
+  const PDP_QUERY_NAME = 'MarketplacePDPContainerQuery';
+  const DEFAULT_PDP_QUERY = {
+    docId: '28633625649641172',
+    variables: {
+      enableJobEmployerActionBar: false,
+      enableJobSeekerActionBar: false,
+      feedbackSource: 56,
+      feedLocation: 'MARKETPLACE_MEGAMALL',
+      referralCode: 'undefined',
+      referralSurfaceString: 'category_feed',
+      scale: 1,
+      shouldFetchLoggedOutSimilarListings: false,
+      targetId: '',
+      useDefaultActor: false,
+      __relay_internal__pv__MarketplacePDPCometSimilarListingsrelayprovider: false,
+      __relay_internal__pv__MarketplacePDPShouldShowRelatedSearchesrelayprovider: true,
+      __relay_internal__pv__MarketplacePDPShouldShowLoggedOutSellerTrustrelayprovider: false,
+      __relay_internal__pv__ShouldUpdateMarketplaceBoostListingBoostedStatusrelayprovider: false,
+      __relay_internal__pv__MarketplacePDPIsLoggedOutrelayprovider: false,
+      __relay_internal__pv__CometUFIShareActionMigrationrelayprovider: false,
+      __relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider: true,
+      __relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider: true,
+      __relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider: true,
+      __relay_internal__pv__CometUFICommentAutoTranslationTyperelayprovider: 'ORIGINAL',
+      __relay_internal__pv__CometUFICommentAvatarStickerAnimatedImagerelayprovider: false,
+      __relay_internal__pv__CometUFICommentActionLinksRewriteEnabledrelayprovider: true,
+      __relay_internal__pv__IsWorkUserrelayprovider: false,
+      __relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider: false,
+      __relay_internal__pv__CometUFISingleLineUFIrelayprovider: true,
+      __relay_internal__pv__MarketplacePDPShouldShowBSGRecommendationsrelayprovider: false,
+      __relay_internal__pv__MarketplacePDPJobShouldShowSharedGroupsSectionrelayprovider: false,
+      __relay_internal__pv__MarketplacePDPJobIsShareToGroupsEnabledOnCometrelayprovider: false,
+    },
+  };
+  const OUTDATED_NOTE = 'Facebook zmienił sposób ładowania ogłoszeń – otwórz dowolne ogłoszenie, a filtr się dostosuje.';
+
+  let pdpQuery = DEFAULT_PDP_QUERY;
+  let queryOutdated = false;
+  let fbTokens = null;
+
+  function tokensFromText(text) {
+    const dtsg = /"DTSGInitialData",\[\],\{"token":"([^"]+)"/.exec(text);
+    const lsd = /"LSD",\[\],\{"token":"([^"]+)"/.exec(text);
+    return dtsg ? { dtsg: dtsg[1], lsd: lsd ? lsd[1] : '' } : null;
   }
+
+  async function getTokens() {
+    if (fbTokens) return fbTokens;
+    let dtsg = null;
+    let lsd = '';
+    for (const s of document.querySelectorAll('script:not([src])')) {
+      const t = s.textContent;
+      if (!dtsg && t.includes('DTSGInitialData')) dtsg = (tokensFromText(t) || {}).dtsg || null;
+      if (!lsd && t.includes('"LSD"')) lsd = (/"LSD",\[\],\{"token":"([^"]+)"/.exec(t) || [])[1] || '';
+    }
+    if (dtsg) return (fbTokens = { dtsg, lsd });
+    // Single-page navigation can leave no inline scripts behind; a fresh page has them.
+    const res = await fetch(`${location.origin}/marketplace/`, { credentials: 'include' });
+    fbTokens = tokensFromText(await res.text());
+    if (!fbTokens) throw blockedError();
+    return fbTokens;
+  }
+
+  function blockedError() {
+    const err = new Error('blocked');
+    err.blocked = true;
+    return err;
+  }
+
+  async function fetchDetails(id) {
+    const tokens = await getTokens();
+    const body = new URLSearchParams({
+      fb_dtsg: tokens.dtsg,
+      lsd: tokens.lsd,
+      fb_api_caller_class: 'RelayModern',
+      fb_api_req_friendly_name: PDP_QUERY_NAME,
+      variables: JSON.stringify(Object.assign({}, pdpQuery.variables, { targetId: id })),
+      server_timestamps: 'true',
+      doc_id: pdpQuery.docId,
+    });
+    const res = await fetch(`${location.origin}/api/graphql/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-fb-lsd': tokens.lsd, 'x-fb-friendly-name': PDP_QUERY_NAME },
+      body,
+    });
+    if (res.status === 429) throw blockedError();
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+
+    if (text.startsWith('for (;;);')) {
+      // Session-level error (expired token, logged out): fetch new tokens next time.
+      fbTokens = null;
+      if (/"error":1357001/.test(text)) throw blockedError();
+      throw new Error('session error');
+    }
+    if (!text.includes('"marketplace_listing_title"')) {
+      if (/rate.?limit|"code":1675004|"code":368\b/i.test(text)) throw blockedError();
+      if (/missing_required_variable|persisted|doc_id|document/i.test(text)) {
+        const err = new Error('query outdated');
+        err.outdated = true;
+        throw err;
+      }
+      throw new Error('no listing data');
+    }
+    return FMF.analyzeDetails(FMF.parseItemHtml(text));
+  }
+
+  function setPdpQuery(q, persist) {
+    if (!q || !q.docId || !q.variables) return;
+    const changed = q.docId !== pdpQuery.docId || JSON.stringify(q.variables) !== JSON.stringify(pdpQuery.variables);
+    pdpQuery = { docId: String(q.docId), variables: Object.assign({}, q.variables, { targetId: '' }) };
+    if (persist && changed) {
+      try {
+        chrome.storage.local.set({ pdpQuery: Object.assign({ t: Date.now() }, pdpQuery) });
+      } catch (e) {
+        /* orphaned content script */
+      }
+    }
+    if (changed && queryOutdated) {
+      queryOutdated = false;
+      if (statusNote === OUTDATED_NOTE) statusNote = '';
+      for (const listing of listings.values()) {
+        if (listing.detailsState === 'error') {
+          listing.detailsState = 'idle';
+          listing.attempts = 0;
+        }
+      }
+      refreshAll();
+      pump();
+    }
+  }
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || d.source !== 'fmf-page-hook' || d.type !== 'pdp-query') return;
+    setPdpQuery(d, true);
+  });
 
   async function readCache(id) {
     if (memoryCache.has(id)) return memoryCache.get(id);
@@ -425,6 +581,7 @@
   // ---------------------------------------------------------------------------
 
   let pill = null;
+  let pillText = null;
   let pillFrame = 0;
 
   function computeStats() {
@@ -452,32 +609,45 @@
     });
   }
 
+  function saveSettings(next) {
+    try {
+      chrome.storage.sync.set({ settings: next });
+    } catch (e) {
+      statusNote = 'Odśwież stronę – rozszerzenie zostało zaktualizowane.';
+      updatePill();
+    }
+  }
+
   function renderPill() {
     if (!isActivePage() || !settingsLoaded) {
       if (pill) pill.hidden = true;
+      ensurePanel();
       return;
     }
     if (!pill) {
       pill = document.createElement('div');
       pill.id = 'fmf-pill';
-      pill.title = 'Filtr aut – kliknij, aby włączyć/wyłączyć. Ustawienia: ikona rozszerzenia.';
-      pill.addEventListener('click', () => {
-        const next = Object.assign({}, settings, { enabled: !settings.enabled });
-        try {
-          chrome.storage.sync.set({ settings: next });
-        } catch (e) {
-          statusNote = 'Odśwież stronę – rozszerzenie zostało zaktualizowane.';
-          renderPill();
-        }
-      });
+      pillText = document.createElement('span');
+      pillText.className = 'fmf-pill-text';
+      pillText.title = 'Filtr aut – kliknij, aby włączyć/wyłączyć';
+      pillText.addEventListener('click', () => saveSettings(Object.assign({}, settings, { enabled: !settings.enabled })));
+      const gear = document.createElement('button');
+      gear.type = 'button';
+      gear.className = 'fmf-pill-gear';
+      gear.textContent = 'Filtry';
+      gear.title = 'Pokaż ustawienia filtra';
+      gear.addEventListener('click', showPanel);
+      pill.append(pillText, gear);
       document.body.appendChild(pill);
     }
-    pill.hidden = false;
-
     const s = computeStats();
+    ensurePanel();
+    panel.setStats(s);
+    // The docked panel shows the same numbers, so the pill would only cover the sidebar.
+    pill.hidden = !panel.host.classList.contains('floating');
     let text;
     if (!s.enabled) text = 'Filtr aut: wyłączony (kliknij, aby włączyć)';
-    else if (!s.hasFilters) text = 'Filtr aut: brak filtrów – ustaw je w ikonie rozszerzenia';
+    else if (!s.hasFilters) text = 'Filtr aut: brak filtrów – ustaw je w panelu „Filtry”';
     else {
       const parts = [`${s.shown} pasuje`];
       if (s.hidden) parts.push(`${s.hidden} ${settings.rejectMode === 'dim' ? 'przyciemnionych' : 'ukrytych'}`);
@@ -487,7 +657,105 @@
     }
     if (s.note) text += ' — ' + s.note;
     pill.dataset.off = String(!s.enabled);
-    if (pill.textContent !== text) pill.textContent = text;
+    if (pillText.textContent !== text) pillText.textContent = text;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Filter panel (in Facebook's left sidebar, or floating when there is none)
+  // ---------------------------------------------------------------------------
+
+  let panel = null;
+  let floatingOpen = false;
+
+  function createPanel() {
+    panel = FMF.createPanel({
+      save: saveSettings,
+      clearCache: clearDetailsCache,
+      saveCollapsed(collapsed) {
+        try {
+          chrome.storage.local.set({ panelCollapsed: collapsed });
+        } catch (e) {
+          /* orphaned content script */
+        }
+      },
+      onClose() {
+        floatingOpen = false;
+        ensurePanel();
+      },
+    });
+    panel.setSettings(settings);
+    try {
+      chrome.storage.local.get('panelCollapsed').then(({ panelCollapsed }) => panel.setCollapsed(!!panelCollapsed), () => {});
+    } catch (e) {
+      /* orphaned content script */
+    }
+  }
+
+  // Facebook's class names are obfuscated and its texts are localised, so the
+  // slot is found structurally: the sidebar is the wide navigation landmark with
+  // a page heading (h1); its "Filters" section is the one holding the h2.
+  function findSidebarSlot() {
+    for (const nav of document.querySelectorAll('[role="navigation"]')) {
+      if (!nav.querySelector('h1')) continue;
+      const rect = nav.getBoundingClientRect();
+      if (rect.width < 200 || rect.height < 200) continue;
+      const heading = nav.querySelector('h2');
+      if (!heading) continue;
+      let section = heading;
+      while (section.parentElement && section.parentElement !== nav && section.parentElement.childElementCount < 3) {
+        section = section.parentElement;
+      }
+      if (section.parentElement === nav || !section.parentElement) continue;
+      return { parent: section.parentElement, after: section };
+    }
+    return null;
+  }
+
+  function ensurePanel() {
+    if (!isActivePage() || !settingsLoaded) {
+      if (panel) panel.host.hidden = true;
+      floatingOpen = false;
+      return;
+    }
+    if (!panel) createPanel();
+    const host = panel.host;
+    const slot = findSidebarSlot();
+    if (slot) {
+      host.classList.remove('floating');
+      host.hidden = false;
+      floatingOpen = false;
+      if (host.parentElement !== slot.parent || host.previousElementSibling !== slot.after) slot.after.after(host);
+    } else {
+      host.classList.add('floating');
+      host.hidden = !floatingOpen;
+      if (host.parentElement !== document.body) document.body.appendChild(host);
+    }
+  }
+
+  function showPanel() {
+    ensurePanel();
+    const host = panel.host;
+    if (host.classList.contains('floating')) {
+      floatingOpen = !floatingOpen;
+      host.hidden = !floatingOpen;
+      if (floatingOpen) panel.setCollapsed(false);
+      return;
+    }
+    panel.setCollapsed(false);
+    host.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    host.classList.remove('flash');
+    void host.offsetWidth;
+    host.classList.add('flash');
+  }
+
+  async function clearDetailsCache() {
+    try {
+      const all = await chrome.storage.local.get(null);
+      await chrome.storage.local.remove(Object.keys(all).filter((k) => k.startsWith(CACHE_PREFIX)));
+      await chrome.storage.local.set({ cacheClearedAt: Date.now() });
+    } catch (e) {
+      /* orphaned content script */
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -531,9 +799,11 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync' && changes.settings) {
       settings = FMF.normalizeSettings(changes.settings.newValue);
+      if (panel) panel.setSettings(settings);
       refreshAll();
       pump();
     }
+    if (area === 'local' && changes.pdpQuery && changes.pdpQuery.newValue) setPdpQuery(changes.pdpQuery.newValue, false);
     if (area === 'local' && changes.cacheClearedAt) {
       memoryCache.clear();
       for (const listing of listings.values()) {
@@ -549,10 +819,11 @@
     if (msg && msg.type === 'fmf:stats') sendResponse(computeStats());
   });
 
-  chrome.storage.sync
-    .get('settings')
-    .then(({ settings: stored }) => {
+  Promise.all([chrome.storage.sync.get('settings'), chrome.storage.local.get('pdpQuery')])
+    .then(([{ settings: stored }, { pdpQuery: learned }]) => {
       settings = FMF.normalizeSettings(stored);
+      if (panel) panel.setSettings(settings);
+      if (learned) setPdpQuery(learned, false);
     })
     .catch(() => {})
     .finally(() => {

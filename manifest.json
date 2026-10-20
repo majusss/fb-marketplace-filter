@@ -23,7 +23,13 @@
   "content_scripts": [
     {
       "matches": ["https://www.facebook.com/*", "https://web.facebook.com/*"],
-      "js": ["src/core.js", "src/content.js"],
+      "js": ["src/page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.facebook.com/*", "https://web.facebook.com/*"],
+      "js": ["src/core.js", "src/panel.js", "src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_idle"
     }

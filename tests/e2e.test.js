@@ -66,40 +66,51 @@ function cardHtml(id) {
     </div></span></div></div></div>`;
 }
 
-function searchPage(ids) {
+// Facebook's left sidebar: a navigation landmark with the page heading (h1)
+// and a "Filters" section (h2) followed by other sections.
+const SIDEBAR = `
+  <div role="navigation" aria-label="Pasek boczny Marketplace" style="width: 300px; min-height: 600px; flex: none; background: #fff">
+    <div><h1>Pojazdy</h1>
+      <div class="sections">
+        <div><div><div><h2>Filtry</h2></div><div>Cena</div></div></div>
+        <div class="fb-categories">Kategorie</div>
+        <div>Inne</div>
+      </div>
+    </div>
+  </div>`;
+
+function searchPage(ids, { sidebar = false } = {}) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>Marketplace</title>
     <style>
       body { font-family: sans-serif; margin: 0; background: #f0f2f5; }
+      .layout { display: flex; }
       .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; }
       .cell { width: 210px; background: #fff; border-radius: 8px; padding: 8px; }
       .img { height: 130px; border-radius: 6px; background: linear-gradient(135deg, #b8c6db, #f5f7fa); margin-bottom: 6px; }
       a { color: inherit; text-decoration: none; }
     </style></head>
-    <body><div role="main"><h2 style="padding: 0 16px">Wyniki wyszukiwania: samochody</h2>
-      <div class="grid" id="grid">${ids.map(cardHtml).join('')}</div></div>
+    <body><div class="layout">${sidebar ? SIDEBAR : ''}<div role="main"><h2 style="padding: 0 16px">Wyniki wyszukiwania: samochody</h2>
+      <div class="grid" id="grid">${ids.map(cardHtml).join('')}</div></div></div>
+      <script type="application/json" data-sjs>[["DTSGInitialData",[],{"token":"fake-dtsg"}],["LSD",[],{"token":"fake-lsd"}]]</script>
       <script>
         window.addMore = (html) => document.getElementById('grid').insertAdjacentHTML('beforeend', html);
       </script>
     </body></html>`;
 }
 
-function itemPage(id) {
+// Response of the MarketplacePDPContainerQuery GraphQL query.
+function itemGraphql(id) {
   const l = LISTINGS[id];
-  const title = l.card[1];
   const target = {
     __typename: 'GroupCommerceProductItem',
     id: String(id),
-    marketplace_listing_title: title,
+    marketplace_listing_title: l.card[1],
     redacted_description: { text: l.desc || '' },
     vehicle_fuel_type: l.fuel || null,
     vehicle_transmission_type: l.trans || null,
     vehicle_odometer_data: { unit: 'KILOMETERS', value: 150000 },
   };
-  const payload = {
-    require: [['RelayPrefetchedStreamCache', 'next', [], ['adp_MarketplacePDP', { __bbox: { result: { data: { viewer: { marketplace_product_details_page: { target } } } } } }]]],
-  };
-  return `<!doctype html><html><head><meta property="og:title" content="${title}"></head><body>
-    <script type="application/json" data-sjs>${escapeNonAscii(JSON.stringify(payload))}</script></body></html>`;
+  return escapeNonAscii(JSON.stringify({ data: { viewer: { marketplace_product_details_page: { target } } } }));
 }
 
 test('extension filters fake Marketplace listings', { timeout: 120000 }, async (t) => {
@@ -117,14 +128,19 @@ test('extension filters fake Marketplace listings', { timeout: 120000 }, async (
 
   const fetched = [];
   await context.route('https://www.facebook.com/**', (route) => {
-    const url = new URL(route.request().url());
-    const item = /^\/marketplace\/item\/(\d+)\/$/.exec(url.pathname);
-    if (item) {
-      fetched.push(item[1]);
-      return route.fulfill({ status: 200, contentType: 'text/html', body: itemPage(item[1]) });
+    const req = route.request();
+    const url = new URL(req.url());
+    if (url.pathname === '/api/graphql/' && req.method() === 'POST') {
+      const params = new URLSearchParams(req.postData() || '');
+      assert.equal(params.get('fb_api_req_friendly_name'), 'MarketplacePDPContainerQuery');
+      assert.equal(params.get('fb_dtsg'), 'fake-dtsg');
+      const id = JSON.parse(params.get('variables')).targetId;
+      fetched.push(id);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: itemGraphql(id) });
     }
     if (url.pathname.startsWith('/marketplace/')) {
-      return route.fulfill({ status: 200, contentType: 'text/html', body: searchPage(['1001', '1002', '1003', '1004', '1005', '1006', '1007']) });
+      const body = searchPage(['1001', '1002', '1003', '1004', '1005', '1006', '1007'], { sidebar: url.searchParams.has('sidebar') });
+      return route.fulfill({ status: 200, contentType: 'text/html', body });
     }
     return route.fulfill({ status: 404, body: '' });
   });
@@ -216,13 +232,39 @@ test('extension filters fake Marketplace listings', { timeout: 120000 }, async (
   await page.waitForFunction(() => /wyłączony/.test(document.getElementById('fmf-pill').textContent));
 
   // --- Clicking the pill turns it back on; a reload is served from the cache ---
-  await page.click('#fmf-pill');
+  await page.click('#fmf-pill .fmf-pill-text');
   await page.waitForFunction(() => document.querySelector('[data-fmf-state="dimmed"]'));
   const fetchedBefore = fetched.length;
   await page.reload();
   const again = await settle(['1001', '1003', '1004', '1005', '1006']);
   assert.deepEqual(again, { 1001: 'match', 1003: 'dimmed', 1004: 'match', 1005: 'dimmed', 1006: 'dimmed' });
   assert.equal(fetched.length, fetchedBefore, 'details should come from the cache after a reload');
+
+  // --- In-page panel: floating when there is no sidebar -----------------------
+  assert.equal(await page.locator('#fmf-panel').isVisible(), false);
+  await page.click('#fmf-pill .fmf-pill-gear');
+  await page.locator('#fmf-panel').waitFor({ state: 'visible' });
+  await page.click('#fmf-panel .seg[data-seg="rejectMode"] button[value="hide"]');
+  await page.waitForFunction(() => document.querySelector('a[href^="/marketplace/item/1002/"]').closest('.cell').dataset.fmfState === 'hidden');
+  await page.click('#fmf-panel .close');
+  await page.locator('#fmf-panel').waitFor({ state: 'hidden' });
+
+  // --- In-page panel: docked in Facebook's sidebar, under "Filters" -----------
+  await page.goto('https://www.facebook.com/marketplace/category/vehicles?sidebar=1');
+  await page.locator('#fmf-panel').waitFor({ state: 'visible' });
+  assert.equal(await page.evaluate(() => document.getElementById('fmf-panel').nextElementSibling.className), 'fb-categories');
+  assert.equal(await page.locator('#fmf-pill').isVisible(), false, 'the docked panel replaces the pill');
+  await page.fill('#fmf-panel input[name="yearMin"]', '2016');
+  await page.press('#fmf-panel input[name="yearMin"]', 'Enter');
+  await page.click('#fmf-panel .chip:has-text("Automat")'); // deselect: any gearbox
+  await page.waitForFunction(() => document.querySelector('a[href^="/marketplace/item/1001/"]').closest('.cell').dataset.fmfState === 'hidden');
+  const fromPanel = await popup.evaluate(() => chrome.storage.sync.get('settings'));
+  assert.deepEqual(
+    { yearMin: fromPanel.settings.yearMin, transmissions: fromPanel.settings.transmissions },
+    { yearMin: 2016, transmissions: [] }
+  );
+  assert.match(await page.locator('#fmf-panel .stats').innerText(), /pasuje/);
+  if (SHOTS_DIR) await page.screenshot({ path: path.join(SHOTS_DIR, 'panel.png') });
 
   // --- Own listings / item pages are left alone ------------------------------
   await page.goto('https://www.facebook.com/marketplace/you/selling');

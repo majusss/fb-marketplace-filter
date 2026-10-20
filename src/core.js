@@ -6,7 +6,7 @@
   'use strict';
 
   // Bump when detection logic changes so cached results get recomputed.
-  const PARSER_VERSION = 1;
+  const PARSER_VERSION = 3;
 
   const FUELS = ['petrol', 'diesel', 'lpg', 'hybrid', 'electric'];
   const TRANSMISSIONS = ['manual', 'automatic'];
@@ -159,6 +159,9 @@
       /\binstalacj\w*\s+gazow\w*/g,
       /\b(?:na|z)\s+gaz(?:ie|em)?\b/g,
       /\+\s*gaz\b/g,
+      /\b\d[.,]\d\s*gaz\b/g, // "Accord 2.0 GAZ"
+      /\bbutl[aeiy]\w*/g, // "butla gazu na 8 lat", "legalizacja butli"
+      /\bzbiornik\w*\s+(?:na\s+)?(?:gaz|lpg)\w*/g,
       /\bgaz\s*\+/g,
       /\bb\s?\+\s?g\b/g,
       /\bgaz\s+(?:sekwencj\w*|brc|landi\w*|prins|stag)\b/g,
@@ -224,6 +227,8 @@
         else if (counts.petrol > counts.diesel) found.delete('diesel');
       }
     }
+    // A gas installation is (almost always) fitted to a petrol engine: "1.8 + LPG".
+    if (found.has('lpg') && !found.has('diesel') && !found.has('hybrid') && !found.has('electric')) found.add('petrol');
     return found.size ? FUELS.filter((f) => found.has(f)) : null;
   }
 
@@ -321,11 +326,22 @@
 
   const YEAR_LABELED = /(?:^|[^a-z])(?:rok\s+produkcji|rok\s+prod\.?|r\.\s*prod\.?|rocznik|year)\s*[:\-–]?\s*((?:19|20)\d{2})(?!\d)|(?:^|[^a-z])rok\s*[:\-–]\s*((?:19|20)\d{2})(?!\d)/;
 
+  // "Vectra 1.8 + LPG 2006r." – but not "kupiony w 2019 r." or "od 2019r." (ownership dates).
+  const YEAR_SUFFIXED = /(?<![\d.,])((?:19|20)\d{2})\s?(?:r\b\.?|rok\b|rocznik\b)/g;
+  const YEAR_SUFFIX_CONTEXT = /(?:\b(?:w|we|od|do|z|ze|roku|since|in)|kupion\w*|sprowadzon\w*|zarejestrowan\w*|rejestracj\w*|wymienion\w*|przeglad\w*|oc)\s*$/;
+
   function yearFromText(text) {
-    const m = YEAR_LABELED.exec(normalize(text));
-    if (!m) return null;
-    const y = +(m[1] || m[2]);
-    return plausibleYear(y) ? y : null;
+    const t = normalize(text);
+    const m = YEAR_LABELED.exec(t);
+    if (m) {
+      const y = +(m[1] || m[2]);
+      return plausibleYear(y) ? y : null;
+    }
+    for (const s of t.matchAll(YEAR_SUFFIXED)) {
+      if (YEAR_SUFFIX_CONTEXT.test(t.slice(Math.max(0, s.index - 30), s.index))) continue;
+      if (plausibleYear(+s[1])) return +s[1];
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -354,8 +370,12 @@
 
   const MILEAGE_LABELED = /\bprzebieg\w*\s*[:\-–]?\s*(?:ok\.?\s*|okolo\s*|tylko\s*|ok\s+)?(\d{1,3}(?:[ .]\d{3})+|\d+(?:[.,]\d+)?)\s*(tys\.?|tys\b|k\b)?\s*(km|mil\w*)?/;
 
+  // The number before the word: "345.000 przebiegu", "180 tys. km przebiegu".
+  const MILEAGE_BEFORE_LABEL = /(?<![\d.,])(\d{1,3}(?:[ .]\d{3})+|\d+(?:[.,]\d+)?)\s*(tys\.?|tys\b|k\b)?\s*(km|mil\w*)?\s*(?:realnego\s+|udokumentowanego\s+|oryginalnego\s+)?przebieg\w*/;
+
   function mileageFromText(text) {
-    const m = MILEAGE_LABELED.exec(normalize(text));
+    const t = normalize(text);
+    const m = MILEAGE_LABELED.exec(t) || MILEAGE_BEFORE_LABEL.exec(t);
     if (!m) return null;
     let value;
     if (/[ .]\d{3}$/.test(m[1])) value = parseInt(m[1].replace(/[ .]/g, ''), 10);

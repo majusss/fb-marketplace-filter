@@ -11,7 +11,15 @@ test('fuel: explicit words and engine codes', () => {
   assert.deepEqual(FMF.detectFuels('Skoda Octavia 1.4 TSI'), ['petrol']);
   assert.deepEqual(FMF.detectFuels('Toyota Yaris benzyna, mały przebieg'), ['petrol']);
   assert.deepEqual(FMF.detectFuels('Opel Astra 1.6 benzyna + LPG'), ['petrol', 'lpg']);
-  assert.deepEqual(FMF.detectFuels('Ford Focus B+G'), ['lpg']);
+  assert.deepEqual(FMF.detectFuels('Ford Focus B+G'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('Opel Vectra C OPC Line 1.8 + LPG 2006r.'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('Passat 1.9 TDI + LPG'), ['diesel', 'lpg']);
+  assert.deepEqual(
+    FMF.detectFuels('Sprzedam Honde Accord 2.0 GAZ, nowe hamulce, butla gazu na 8 lat, dwa komplety opon. Wspomaganie kierownicy, el. szyby'),
+    ['petrol', 'lpg']
+  );
+  assert.deepEqual(FMF.detectFuels('Benzyna, legalizacja butli do 2030'), ['petrol', 'lpg']);
+  assert.equal(FMF.detectFuels('Wymieniony pedał gazu i linka'), null);
   assert.deepEqual(FMF.detectFuels('Toyota Auris Hybrid'), ['hybrid']);
   assert.deepEqual(FMF.detectFuels('Nissan Leaf, samochód w pełni elektryczny'), ['electric']);
   assert.deepEqual(FMF.detectFuels('Fiat Punto, zamienię na diesla'), null);
@@ -66,6 +74,10 @@ test('year from titles and text', () => {
   assert.equal(FMF.yearFromText('Rok produkcji: 2012, przebieg 180 tys'), 2012);
   assert.equal(FMF.yearFromText('Rocznik 2008'), 2008);
   assert.equal(FMF.yearFromText('W 2020 roku wymieniony rozrząd'), null);
+  assert.equal(FMF.yearFromText('Sprzedam swoje prywatne auto.\nOpel Vectra C OPC Line 1.8 + LPG 2006r.'), 2006);
+  assert.equal(FMF.yearFromText('Golf 2011 rok, zadbany'), 2011);
+  assert.equal(FMF.yearFromText('Auto kupione w 2019r. w salonie'), null);
+  assert.equal(FMF.yearFromText('Posiadam od 2018 r.'), null);
 });
 
 test('mileage parsing', () => {
@@ -76,6 +88,8 @@ test('mileage parsing', () => {
   assert.equal(FMF.mileageFromText('Przebieg: 215 000 km'), 215000);
   assert.equal(FMF.mileageFromText('przebieg 180 tys'), 180000);
   assert.equal(FMF.mileageFromText('Przebieg ok. 95000km'), 95000);
+  assert.equal(FMF.mileageFromText('6 biegowa skrzynia biegów, 156km, 345.000 przebiegu, radio'), 345000);
+  assert.equal(FMF.mileageFromText('Ma 180 tys. km przebiegu'), 180000);
 });
 
 test('card text parsing', () => {
