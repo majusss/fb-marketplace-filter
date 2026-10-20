@@ -210,7 +210,8 @@
     const notCar = settings.partsHide
       ? FMF.detectNotCar(
           info.title,
-          ((listing.cardInfo && listing.cardInfo.text) || '') + '\n' + ((listing.details && listing.details.raw && listing.details.raw.description) || '')
+          (listing.cardInfo && listing.cardInfo.text) || '',
+          (listing.details && listing.details.raw && listing.details.raw.description) || ''
         )
       : null;
     listing.notCar = notCar;
@@ -301,7 +302,7 @@
       'font-weight:700;color:#1877f2',
       '\n  FB pokazuje:  ' + fbSummary(rec),
       '\n  Karta:        ' + (rec.card.text || '(brak)'),
-      '\n  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 160) + '…' : '(brak)'),
+      '\n  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ') : '(brak)'),
       '\n  Rozszerzenie: ' + parsedSummary(rec),
       '\n  Werdykt:      ' + verdictText(rec)
     );

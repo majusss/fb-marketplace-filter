@@ -220,6 +220,28 @@ test('fuel: "dizel" (Polish spelling) is recognized as diesel', () => {
   assert.deepEqual(res.fuels, ['diesel']);
 });
 
+test('year: a part\'s year is not the car\'s year', () => {
+  assert.equal(FMF.yearFromText('Samochod stoi na 18 calowych felgach z oponami z 2025 roku.'), null);
+  assert.equal(FMF.yearFromText('Butla z 2024r., auto z 2006 roku'), 2006);
+  assert.equal(FMF.yearFromText('Honda Accord z 2008 roku, akumulator z 2023 roku'), 2008);
+});
+
+test('mileage: bare grouped number with km, but not service intervals', () => {
+  assert.equal(FMF.mileageFromText('Bezwypadkowa. Wersja Executive. Zadbana. 148 100 km'), 148100);
+  assert.equal(FMF.mileageFromText('Auto ma ok. 210.000 km, zadbane'), 210000);
+  assert.equal(FMF.mileageFromText('Rozrząd wymieniony przy 150 000 km'), null);
+  assert.equal(FMF.mileageFromText('Olej wymieniany co 15 000 km'), null);
+  assert.equal(FMF.mileageFromText('Sprowadzony z 34 000 km, teraz zadbany'), null);
+  assert.equal(FMF.mileageFromText('Silnik 2.0 155 KM, zadbany'), null);
+});
+
+test('mileage: placeholder odometer (999 km) falls back to the description', () => {
+  const base = { title: '2007 Honda Civic', fbFuel: 'DIESEL', fbTransmission: 'MANUAL' };
+  assert.equal(FMF.analyzeDetails({ ...base, odometer: { value: 999, unit: 'KILOMETERS' }, description: 'Przebieg 312 tys. km' }).mileageKm, 312000);
+  assert.equal(FMF.analyzeDetails({ ...base, odometer: { value: 1, unit: 'KILOMETERS' }, description: 'auto sprawne' }).mileageKm, null);
+  assert.equal(FMF.analyzeDetails({ ...base, odometer: { value: 187000, unit: 'KILOMETERS' }, description: '' }).mileageKm, 187000);
+});
+
 test('not-car: parts listings are detected', () => {
   const cases = [
     // [title, text, type]
@@ -250,10 +272,25 @@ test('not-car: parts listings are detected', () => {
     ['Honda Accord 4 szt. kołpaki', '', 'parts'],
     ['Akumulator 750a 75ah', '', 'parts'],
     ['Zawieszenie gwintowane KW Honda accord vii sedan', '', 'parts'],
+    ['Honda Kompresor, Klimatyzacji firmy:Frankberg (kod producenta: Acc11025)', '', 'parts'],
+    ['Przedni prawy błotnik Honda accord 7', '', 'parts'],
+    ['Ramka nawigacji, NAVI Honda Accord VI', '', 'parts'],
+    ['Honda Blenda tylnej klapy', '', 'parts'],
   ];
   for (const [title, text, type] of cases) {
     assert.deepEqual(FMF.detectNotCar(title, text), { type, match: FMF.detectNotCar(title, text).match }, title);
   }
+});
+
+test('not-car: description that opens with "Sprzedam <part>"', () => {
+  const desc = 'Witam, Sprzedam lotkę typera Honda Civic EP w kolorze b520p Vivid Blue.';
+  assert.equal(FMF.detectNotCar('Honda Civic EP lotka type r', '', desc).type, 'parts');
+  assert.equal(FMF.detectNotCar('2008 Honda Civic', '', 'Do sprzedania kolorowa Honda Civic, silnik 1.8'), null);
+  assert.equal(FMF.detectNotCar('2008 Honda Civic', '', 'Sprzedam Hondę Civic, komplet kół gratis'), null);
+  assert.equal(FMF.detectNotCar('Honda Civic 2008', '', ''), null);
+  assert.equal(FMF.detectNotCar('Honda Jazz 1.4', '', ''), null);
+  assert.equal(FMF.detectNotCar('Kia Sportage 2.0', '', ''), null);
+  assert.equal(FMF.detectNotCar('Toyota Corolla 1.6', '', ''), null);
 });
 
 test('not-car: "wanted" ads are detected', () => {
@@ -276,6 +313,9 @@ test('not-car: real cars are never flagged', () => {
     ['2005 Honda Civic', 'Szybki dostęp do części, auto bezawaryjne'],
     ['2005 Honda Civic', 'Auto nie jest na części, w pełni sprawne'],
     ['2005 Honda Civic', 'Sprzedam auto, nie na części'],
+    ['2007 Honda Civic', 'Honda Civic UFO 2007r 2,2D uszkodzony silnik stuka. Auto do naprawy lub na czesci'],
+    ['Przednia szyba pęknięta, Honda Civic 2008', ''],
+    ['Prawdziwa okazja Honda Accord', ''],
     ['Sprzedam Hondę Accord 2.0 LPG', 'auto w dobrym stanie'],
     ['Nowy rozrząd, Honda Civic 1.8', ''],
     ['2008 Honda Civic VIII UFO 2008r GAZ', 'Szybka sprzedaż, auto zadbane'],

@@ -6,7 +6,7 @@
   'use strict';
 
   // Bump when detection logic changes so cached results get recomputed.
-  const PARSER_VERSION = 6;
+  const PARSER_VERSION = 7;
 
   const FUELS = ['petrol', 'diesel', 'lpg', 'hybrid', 'electric'];
   const TRANSMISSIONS = ['manual', 'automatic'];
@@ -346,9 +346,13 @@
     /(?:kup\w+|sprowadz\w*|zarejestrow\w*|rejestracj\w*|wymien\w*|przeglad\w*|oc\s+(?:w|na)\s*|od|do|styczn\w*|lut\w*|mar\w*|kwietn\w*|maja|czerwc\w*|lipc\w*|sierpn\w*|wrzesi\w*|pazdziernik\w*|listopad\w*|grudn\w*)\s*(?:w|we)?\s*$/;
   const EVENT_AFTER_YEAR = /^\s*(?:roku\s+)?(?:wymienion\w*|kupion\w*|serwisowan\w*|napraw\w*|przeglad\w*|zakupion\w*|oddan\w*)\b/;
 
+  // "opony z 2025 roku", "butla z 2024r." - the year of a part, not of the car.
+  const PART_BEFORE_YEAR =
+    /(?:opon\w*|butl\w*|akumulator\w*|instalacj\w*|lpg|gaz\w*|rozrzad\w*|sprzegl\w*|felg\w*|alufelg\w*|kol\w*|silnik\w*|skrzyni\w*|turb\w*|amortyzator\w*|hamulc\w*|klock\w*|tarcz\w*)\s+(?:z|od|ze)\s*$/;
+
   function isEventYear(text, index, end) {
     const before = clauseBefore(text, index, 40);
-    if (EVENT_BEFORE_YEAR.test(before)) return true;
+    if (EVENT_BEFORE_YEAR.test(before) || PART_BEFORE_YEAR.test(before)) return true;
     return EVENT_AFTER_YEAR.test(clauseAfter(text, end, 25));
   }
 
@@ -395,10 +399,26 @@
   // The number before the word: "345.000 przebiegu", "180 tys. km przebiegu".
   const MILEAGE_BEFORE_LABEL = /(?<![\d.,])(\d{1,3}(?:[ .]\d{3})+|\d+(?:[.,]\d+)?)\s*(tys\.?|tys\b|k\b)?\s*(km|mil\w*)?\s*(?:realnego\s+|udokumentowanego\s+|oryginalnego\s+)?przebieg\w*/;
 
+  // No label at all, only a grouped number: "Zadbana. 148 100 km". Skipped when
+  // it is a service interval or a past reading ("rozrząd przy 150 000 km",
+  // "olej co 15 000 km", "sprowadzony z 34 000 km").
+  const MILEAGE_BARE = /(?<![\d.,])(\d{2,3}[ .]\d{3})\s*km\b/g;
+  const NOT_CURRENT_MILEAGE =
+    /(?:\bco|\bprzy|\bpo|\bod|\bdo|\bza|wymian\w*|wymien\w*|serwis\w*|gwarancj\w*|zasieg\w*|sprowadz\w*|kupi\w*|zakupi\w*|zrobion\w*|robion\w*|limit\w*|max\w*|maks\w*)(?:\s+\S{1,3}){0,2}\s*(?:ok\.?\s*|okolo\s*)?$/;
+
+  function bareMileage(t) {
+    for (const m of t.matchAll(MILEAGE_BARE)) {
+      if (NOT_CURRENT_MILEAGE.test(clauseBefore(t, m.index, 40))) continue;
+      const value = parseInt(m[1].replace(/[ .]/g, ''), 10);
+      if (value >= 1000) return value;
+    }
+    return null;
+  }
+
   function mileageFromText(text) {
     const t = normalize(text);
     const m = MILEAGE_LABELED.exec(t) || MILEAGE_BEFORE_LABEL.exec(t);
-    if (!m) return null;
+    if (!m) return bareMileage(t);
     let value;
     if (/[ .]\d{3}$/.test(m[1])) value = parseInt(m[1].replace(/[ .]/g, ''), 10);
     else value = parseFloat(m[1].replace(',', '.'));
@@ -560,6 +580,13 @@
     return toKm(value, /MILE/i.test(odo.unit || '') ? 'mil' : 'km');
   }
 
+  // Facebook requires an odometer value, so sellers type 1, 123 or 999 as a
+  // placeholder - treat those as "not given" and use the description instead.
+  function plausibleOdometerKm(odo) {
+    const km = odometerKm(odo);
+    return km != null && km >= 1000 && km <= 1500000 ? km : null;
+  }
+
   // Turns parseItemHtml() output into listing info.
   function analyzeDetails(d) {
     const text = [d.title, d.description].filter(Boolean).join('\n');
@@ -588,13 +615,13 @@
       year: (d.title && yearFromTitle(d.title)) || yearFromText(d.description) || null,
       fuels,
       transmission: mapFacebookTransmission(d.fbTransmission) || detectTransmission(text),
-      mileageKm: odometerKm(d.odometer) || mileageFromText(d.description),
+      mileageKm: plausibleOdometerKm(d.odometer) || mileageFromText(d.description),
       // What Facebook itself shows - kept for the diagnostics log.
       raw: {
         fuel: d.fbFuel || null,
         transmission: d.fbTransmission || null,
         odometer: odometerKm(d.odometer),
-        description: d.description ? String(d.description).slice(0, 400) : null,
+        description: d.description ? String(d.description).slice(0, 1500) : null,
       },
     };
   }
@@ -630,23 +657,25 @@
   // also after "Sprzedam", "Tytuł:", "Oryginalne". Not after "Nowy/Nowe" -
   // "Nowy rozrząd, Honda Civic" is a car.
   const PART_WORDS = [
-    'felg\\w*', 'alufelg\\w*', 'kol\\w*', 'opon\\w*', 'komplet\\b', 'stalowk\\w*', 'stalki\\b',
+    'felg\\w*', 'alufelg\\w*', 'kol(?:a|o|ek|ka|ach|ami)\\b', 'kolpak\\w*', 'kolektor\\w*', 'opon\\w*', 'komplet\\b', 'stalowk\\w*', 'stalki\\b',
     'rozrzad\\w*', 'lamp\\w*', 'swiatl\\w*', 'drzwi\\b', 'mask\\w*', 'zderzak\\w*', 'blotnik\\w*',
     'klap\\w*', 'lusterk\\w*', 'lustro\\b', 'kierownic\\w*', 'katalizator\\w*', 'wydech\\w*',
     'turbina\\b', 'turbosprez\\w*', 'amortyzat\\w*', 'sprezyn\\w*', 'wahacz\\w*', 'wtrysk\\w*',
     'pomp\\w*', 'klocki\\b', 'tarcz\\w*', 'hamulc\\w*', 'hak\\w*', 'dywanik\\w*', 'pokrowc\\w*',
     'oslon\\w*', 'podsufitk\\w*', 'alternator\\w*', 'rozrusznik\\w*', 'dwumas\\w*', 'silnik\\w*',
-    'skrzynia\\s+biegow\\b', 'czesci\\b', 'radio\\w*', 'lotk[ai]\\b', 'spojler\\w*', 'dojazdowk\\w*',
+    'skrzynia\\s+biegow\\b', 'czesci\\b', 'radio\\w*', 'lotk[aeiy]\\b', 'spojler\\w*', 'dojazdowk\\w*',
     'plastikow\\w*', 'nakladk\\w*', 'listw\\w*', 'uszczelk\\w*', 'czujnik\\w*', 'sterownik\\w*',
     'nawigacj\\w*', 'glosnik\\w*', 'fotel\\w*', 'szyb[ay]\\b', 'akumulator\\w*', 'zawieszeni\\w*',
-    'gwintow\\w*', 'chlodnic\\w*', 'intercooler\\w*', 'sprzeglo\\w*', 'bagaznik\\w*', 'belk\\w*',
+    'gwintow\\w*', 'ramk\\w*', 'blend\\w*', 'kompresor\\w*', 'sprezark\\w*', 'chlodnic\\w*', 'intercooler\\w*', 'sprzeglo\\w*', 'bagaznik\\w*', 'belk\\w*',
   ];
   // Prefixes allowed before the part word: "Sprzedam", "Tytuł:", adjectives
   // ("Piękne koła", "Oryginalne radio", also misspelled) and "Honda – felgi".
+  const CAR_BRANDS =
+    '(?:honda|toyota|mazda|nissan|bmw|audi|vw|volkswagen|opel|ford|skoda|kia|hyundai|renault|peugeot|citroen|fiat|seat|volvo|mercedes|suzuki|mitsubishi|subaru|lexus|dacia)';
   const PARTS_TITLE_START = new RegExp(
     '^(?:zamieszczone\\s+\\S+\\s+|\\d+\\s*x\\s*\\d+\\s*)?' +
-      '(?:\\S+\\s*[-–—:]\\s+)?' +
-      '(?:(?:sprzedam|tytul:?|orygina\\w*|orginal\\w*|piekn\\w*|ladn\\w*|super|zimow\\w*|letni\\w*|wielosezonow\\w*|uzywan\\w*|aluminiow\\w*|stalow\\w*)\\s+){0,2}' +
+      '(?:\\S+\\s*[-–—:]\\s+|' + CAR_BRANDS + '\\s+)?' +
+      '(?:(?:sprzedam|tytul:?|orygina\\w*|orginal\\w*|piekn\\w*|ladn\\w*|super|zimow\\w*|letni\\w*|wielosezonow\\w*|uzywan\\w*|aluminiow\\w*|stalow\\w*|przedn\\w*|tyln\\w*|lew[aeiy]\\b|praw[aeiy]\\b|gorn\\w*|doln\\w*)\\s+){0,2}' +
       '(?:' + PART_WORDS.join('|') + ')',
     'm'
   );
@@ -662,21 +691,33 @@
   // "this is a parts ad" wording counts. "do części" / "części do" are left out
   // on purpose - car ads say "łatwy dostęp do części", "tanie części do tego
   // modelu" - and "na części" is skipped when negated ("nie na części").
-  const PARTS_PHRASE = /(?:(?<!\bnie\s)(?<!\bnie\s+jest\s)\bna\s+czesci\b|\bsprzedam\s+czesci\b|\bczesci\s+zapraszam\b|\bdo\s+rozbierania\b|\btylko\s+czesci\b)/i;
+  // "do naprawy lub na części" is a damaged car, not a parts ad.
+  const PARTS_PHRASE = /(?:(?<!\bnie\s)(?<!\bnie\s+jest\s)(?<!\blub\s)(?<!\balbo\s)(?<!\bewentualnie\s)\bna\s+czesci\b|\bsprzedam\s+czesci\b|\bczesci\s+zapraszam\b|\bdo\s+rozbierania\b|\btylko\s+czesci\b)/i;
   const WANTED_TITLE = /^(?:kupie|zakupie|poszuku?j\w*|szukam\w*)\b/;
 
+  const DAMAGE_WORDS = /\b(?:pekniet\w*|uszkodz\w*|rozbit\w*|zbit\w*|porysowan\w*|wgniecion\w*|powypadk\w*|do\s+naprawy)\b/;
+
+  // A description that opens with "Sprzedam lotkę", "Witam, sprzedam nowy kompresor".
+  const PARTS_DESC_START = new RegExp(
+    '^\\W*(?:(?:witam|dzien dobry|czesc|hej)\\W+)?(?:sprzedam|na sprzedaz|do sprzedania)\\s+' +
+      '(?:(?:nowy|nowa|nowe|oryginaln\\w*|orginaln\\w*|uzywan\\w*)\\s+)?(?:' + PART_WORDS.join('|') + ')'
+  );
+
   // Returns { type: 'parts' | 'wanted', match: string } or null.
-  function detectNotCar(title, text) {
+  function detectNotCar(title, text, description) {
     const t = normalize(title);
     if (!WANTED_TITLE.test(t)) {
-      const started = PARTS_TITLE_START.exec(t);
+      // "Przednia szyba pęknięta, Honda Civic" describes damage on a car.
+      const started = !DAMAGE_WORDS.test(t) && PARTS_TITLE_START.exec(t);
       if (started) return { type: 'parts', match: started[0].trim() };
       const ended = PARTS_TITLE_END.exec(t);
       if (ended) return { type: 'parts', match: ended[0].trim() };
       const any = PARTS_TITLE_ANY.exec(t);
       if (any) return { type: 'parts', match: any[0].trim() };
     }
-    const m = PARTS_PHRASE.exec(normalize(text));
+    const d = PARTS_DESC_START.exec(normalize(description));
+    if (d && !WANTED_TITLE.test(t)) return { type: 'parts', match: d[0].replace(/\W+/g, ' ').trim() };
+    const m = PARTS_PHRASE.exec(normalize(text) + '\n' + normalize(description));
     if (m) return { type: 'parts', match: m[0].trim() };
     if (WANTED_TITLE.test(t)) return { type: 'wanted', match: t.split(/\s+/)[0] };
     return null;
@@ -829,7 +870,7 @@
             rec.title,
             '  FB pokazuje:  ' + fbSummary(rec),
             '  Karta:        ' + (rec.card.text ? rec.card.text : '(brak)'),
-            '  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 200) : '(brak)'),
+            '  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ') : '(brak)'),
             '  Rozszerzenie: ' + parsedSummary(rec),
             '  Werdykt:      ' + verdictText(rec),
           ].join('\n')
