@@ -268,13 +268,16 @@
           const fb = document.createElement('span');
           fb.className = 'muted';
           fb.textContent = 'FB: ' + FMF.fbSummary(rec);
+          const card = document.createElement('span');
+          card.className = 'muted';
+          card.textContent = 'Karta: ' + (rec.card.text || '(brak)');
           const parsed = document.createElement('span');
           parsed.className = 'muted';
           parsed.textContent = 'Rozszerzenie: ' + FMF.parsedSummary(rec);
           const verdict = document.createElement('span');
           verdict.className = 'v-' + (rec.state === 'match' ? 'match' : rec.state === 'reject' || rec.state === 'reject-unknown' ? 'reject' : 'unknown');
           verdict.textContent = FMF.verdictText(rec);
-          box.append(title, fb, parsed, verdict);
+          box.append(title, fb, card, parsed, verdict);
           return box;
         })
       );

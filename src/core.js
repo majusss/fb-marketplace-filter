@@ -152,7 +152,7 @@
       /\bpb\b/g,
       /\b(?:tsi|tfsi|e-?tsi|fsi|mpi|vtec|i-?vtec|ecoboost|t-?jet|tce|puretech|vvt-?i|gdi|t-?gdi|sce|thp|mivec|skyactiv-?g|ti-?vct|multiair|kompressor|vti|cgi|ecotec|twinair)\b/g,
       /(?<![a-z\d])[a-z]?\d{3}x?i\b/g, // BMW 320i, m340i
-      /\b\d[.,]\d\s?i\b/g, // 1.4i
+      /\b\d[.,]\d\s?i\b(?!\s*-)/g, // 1.4i - but not the "i" of "2.2 i-DTEC"
     ],
     lpg: [
       /\b(?:lpg|cng)\b/g,
@@ -411,9 +411,42 @@
 
   const PRICE_LINE = /\d[\d\s.,]*\s*(?:zl|pln|eur|usd|gbp)\b|\d[\d\s.,]*\s*[$€£]|[$€£]\s*\d|\b(?:zl|pln|eur)\s*\d|^(?:bezplatnie|za darmo|free)$/;
 
-  function parseCardText(text) {
+  // Labels Facebook puts on the card instead of the title.
+  const CARD_META_LINE = /^(?:zamieszczone|ogloszenie partnera|just posted|partner ad|promowane|wyroznione|reklama|ad)\b/i;
+
+  const CURRENCY = '(?:zł|zl|pln|eur|usd|gbp|huf|ron|hrk|sek|nok|chf|czk|ft|hufr|forint)';
+  // No \b here: it does not work after a Polish letter ("zł") in JavaScript.
+  const CURRENCY_TOKEN = new RegExp('[\\d\\s.,]*\\s*(?:' + CURRENCY + ')(?![a-z0-9])', 'gi');
+
+  const flat = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+
+  // The link's aria-label is "<title>, <price>, <location>, ogłoszenie <id>".
+  // The title is the only reliable one: on the card it is sometimes replaced
+  // by a label or not rendered at all. The price is the last field with a
+  // currency, so everything from it on is dropped.
+  function titleFromAria(aria, price, location) {
+    let s = String(aria || '').replace(/,\s*ogłoszenie\s+\d+\s*$/i, '').trim();
+    if (!s) return null;
+    let last = null;
+    let m;
+    CURRENCY_TOKEN.lastIndex = 0;
+    while ((m = CURRENCY_TOKEN.exec(s))) last = m;
+    if (last) {
+      s = s.slice(0, last.index).replace(/[\s,]+$/, '');
+    } else {
+      const loc = flat(location);
+      const prc = flat(price);
+      if (loc && flat(s).endsWith(loc)) s = flat(s).slice(0, flat(s).length - loc.length).replace(/,\s*$/, '').trim();
+      if (prc && flat(s).endsWith(prc)) s = flat(s).slice(0, flat(s).length - prc.length).replace(/,\s*$/, '').trim();
+    }
+    s = s.replace(/^[\s,]+/, '').replace(/,\s*$/, '').trim();
+    return s || null;
+  }
+
+  function parseCardText(text, ariaLabel) {
     const lines = String(text || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
     let mileageKm = null;
+    let price = null;
     const rest = [];
     for (const line of lines) {
       const n = normalize(line);
@@ -421,10 +454,17 @@
         if (mileageKm == null) mileageKm = parseMileage(n);
         continue;
       }
-      if (PRICE_LINE.test(n)) continue;
+      if (PRICE_LINE.test(n)) {
+        if (price == null) price = line;
+        continue;
+      }
+      if (CARD_META_LINE.test(n)) continue;
       rest.push(line);
     }
-    const title = rest[0] || null;
+    // The card ends with the location, so the title is the line before it.
+    const location = rest.length ? rest[rest.length - 1] : null;
+    let title = titleFromAria(ariaLabel, price, location);
+    if (!title && rest.length >= 2) title = rest[rest.length - 2];
     let year = null;
     for (const line of rest) {
       year = yearFromTitle(line);
@@ -437,6 +477,7 @@
       mileageKm,
       fuels: joined ? detectFuels(joined) : null,
       transmission: joined ? detectTransmission(joined) : null,
+      text: lines.join(' | '),
     };
   }
 
@@ -528,6 +569,16 @@
       if (textFuels && textFuels.includes('lpg') && !fuels.includes('lpg')) fuels = fuels.concat('lpg');
     } else {
       fuels = textFuels;
+      if (fuels && fuels.includes('diesel') && fuels.includes('petrol')) {
+        // Both are mentioned: the title ("2.2 i-CTDi") decides.
+        const titleFuels = detectFuels(d.title || '') || [];
+        const titleDiesel = titleFuels.includes('diesel');
+        const titlePetrol = titleFuels.includes('petrol');
+        if (titleDiesel !== titlePetrol) {
+          const keep = titleDiesel ? 'diesel' : 'petrol';
+          fuels = fuels.filter((f) => f === keep || (f !== 'diesel' && f !== 'petrol'));
+        }
+      }
     }
 
     return {
@@ -547,13 +598,15 @@
   }
 
   // Card data is what the user sees, so it wins for year/mileage; the listing
-  // page has structured data, so it wins for fuel/transmission.
+  // page has structured data, so it wins for fuel/transmission. The title
+  // comes from the listing page - on the card it is sometimes replaced by
+  // a label ("Zamieszczone przed chwilą") or missing altogether.
   function mergeInfo(card, details) {
     card = card || {};
     details = details || {};
     const pick = (a, b) => (a != null ? a : b != null ? b : null);
     return {
-      title: pick(card.title, details.title),
+      title: pick(details.title, card.title),
       year: pick(card.year, details.year),
       mileageKm: pick(card.mileageKm, details.mileageKm),
       fuels: pick(details.fuels, card.fuels),
@@ -705,6 +758,7 @@
           [
             rec.title,
             '  FB pokazuje:  ' + fbSummary(rec),
+            '  Karta:        ' + (rec.card.text ? rec.card.text : '(brak)'),
             '  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 200) : '(brak)'),
             '  Rozszerzenie: ' + parsedSummary(rec),
             '  Werdykt:      ' + verdictText(rec),

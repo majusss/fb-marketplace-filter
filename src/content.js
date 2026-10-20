@@ -199,7 +199,10 @@
       const root = firstConnectedRoot(listing);
       // Badges are drawn with CSS generated content, so innerText ignores them.
       // A display:none element has no line breaks in innerText, so skip those.
-      if (root && root.dataset.fmfState !== 'hidden') listing.cardInfo = FMF.parseCardText(root.innerText);
+      if (root && root.dataset.fmfState !== 'hidden') {
+        const anchor = root.querySelector('a[href*="/marketplace/item/"]');
+        listing.cardInfo = FMF.parseCardText(root.innerText, anchor ? anchor.getAttribute('aria-label') : null);
+      }
     }
 
     const info = FMF.mergeInfo(listing.cardInfo, listing.details);
@@ -251,6 +254,7 @@
         mileageKm: card.mileageKm ?? null,
         fuels: card.fuels ?? null,
         transmission: card.transmission ?? null,
+        text: card.text ?? null,
       },
       fb: {
         fuel: raw.fuel ?? null,
@@ -282,6 +286,7 @@
       `%c[Filtr aut] ${rec.title}`,
       'font-weight:700;color:#1877f2',
       '\n  FB pokazuje:  ' + fbSummary(rec),
+      '\n  Karta:        ' + (rec.card.text || '(brak)'),
       '\n  Opis:         ' + (rec.fb.description ? rec.fb.description.replace(/\s+/g, ' ').slice(0, 160) + '…' : '(brak)'),
       '\n  Rozszerzenie: ' + parsedSummary(rec),
       '\n  Werdykt:      ' + verdictText(rec)

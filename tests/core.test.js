@@ -28,6 +28,8 @@ test('fuel: explicit words and engine codes', () => {
   );
   assert.deepEqual(FMF.detectFuels('Samochód na gazie, butla gazu'), ['petrol', 'lpg']);
   assert.deepEqual(FMF.detectFuels('serwis gazu (filtry, przegląd), Gaz jest do 6 grudnia 2033 roku'), ['petrol', 'lpg']);
+  assert.deepEqual(FMF.detectFuels('motor 2.2 i-DTEC 150 CP'), ['diesel']);
+  assert.deepEqual(FMF.detectFuels('silnik 2.0 i-VTEC benzyna'), ['petrol']);
   assert.deepEqual(FMF.detectFuels('układ gazowy w aucie, gaz ważny do 2031'), ['petrol', 'lpg']);
   assert.deepEqual(FMF.detectFuels('Auto ma gaz.'), ['petrol', 'lpg']);
   assert.deepEqual(FMF.detectFuels('Toyota Auris Hybrid'), ['hybrid']);
@@ -123,6 +125,44 @@ test('card text parsing', () => {
   assert.equal(hp.transmission, 'automatic');
 });
 
+test('card text parsing: labels and missing titles', () => {
+  // "Zamieszczone przed chwilą" and "Ogłoszenie partnera" are labels, not titles.
+  const posted = FMF.parseCardText('Zamieszczone przed chwilą\n15 300 zł\n2004 Honda Accord\nDębica gmina');
+  assert.equal(posted.title, '2004 Honda Accord');
+  assert.equal(posted.year, 2004);
+
+  const partner = FMF.parseCardText('Ogłoszenie partnera\n5 000 zł\n2016 Volkswagen Golf\nKraków');
+  assert.equal(partner.title, '2016 Volkswagen Golf');
+  assert.equal(partner.year, 2016);
+
+  // Only a price and a location - the title is not on the card at all.
+  const noTitle = FMF.parseCardText('65 000 zł\nLublin');
+  assert.equal(noTitle.title, null);
+  assert.equal(noTitle.year, null);
+  assert.equal(noTitle.text, '65 000 zł | Lublin');
+});
+
+test('card text parsing: the title comes from the aria-label', () => {
+  // Facebook's link label: "<title>, <price>, <location>, ogłoszenie <id>".
+  const withAria = FMF.parseCardText(
+    '11 900 zł\n2005 Honda Accord\nKraków',
+    '2005 Honda Accord, 11 900 zł, Kraków, ogłoszenie 936520162203892'
+  );
+  assert.equal(withAria.title, '2005 Honda Accord');
+  assert.equal(withAria.year, 2005);
+
+  // Two prices on the card, one in the label.
+  const partner = FMF.parseCardText(
+    '49,90 zł\n59,90 zł\nResorak Majorette Honda Accord 1:59 kolekcjonerski metalowy',
+    'Resorak Majorette Honda Accord 1:59 kolekcjonerski metalowy, 49,90 zł, Kraków, ogłoszenie 28864662319817262'
+  );
+  assert.equal(partner.title, 'Resorak Majorette Honda Accord 1:59 kolekcjonerski metalowy');
+
+  // A label without a title (Facebook renders it later) stays empty.
+  const noTitle = FMF.parseCardText('65 000 zł\nLublin', ', 65 000 zł, Lublin, ogłoszenie 1072544729036537');
+  assert.equal(noTitle.title, null);
+});
+
 test('listing page HTML parsing (Relay JSON)', () => {
   const html =
     '<html><head><meta property="og:title" content="ignored"></head><body><script type="application/json">' +
@@ -155,8 +195,23 @@ test('listing page HTML parsing (Relay JSON)', () => {
   });
 });
 
-test('diagnostics: explains why a listing was rejected', () => {
-  const settings = FMF.normalizeSettings({
+test('fuel: the title decides when the description mentions both', () => {
+  const diesel = FMF.analyzeDetails({
+    title: 'Honda Accord VII, 2.2 i-CTDi',
+    description: 'Silnik 2.2 i-CTDi 150KM, auto zadbane, benzyna w aucie.',
+    fbFuel: null,
+  });
+  assert.deepEqual(diesel.fuels, ['diesel']);
+
+  const petrol = FMF.analyzeDetails({
+    title: 'Honda Accord 2.0 benzyna',
+    description: 'Silnik 2.0 benzyna, wersja z gazem.',
+    fbFuel: null,
+  });
+  assert.deepEqual(petrol.fuels, ['petrol', 'lpg']);
+});
+
+test('diagnostics: explains why a listing was rejected', () => {  const settings = FMF.normalizeSettings({
     yearMin: 2005,
     fuels: ['petrol', 'lpg'],
     transmissions: ['manual'],
